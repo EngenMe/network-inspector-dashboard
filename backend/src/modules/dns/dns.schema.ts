@@ -15,6 +15,7 @@ export const dnsQueryRawSchema = z.object({
         .max(253, 'Domain is too long')
         .regex(domainRegex, 'Invalid domain format'),
     types: z.string().optional(),
+    debug: z.string().optional(),
 })
 
 export type DnsQueryRaw = z.infer<typeof dnsQueryRawSchema>
@@ -22,6 +23,7 @@ export type DnsQueryRaw = z.infer<typeof dnsQueryRawSchema>
 export interface DnsQuery {
     domain: string
     types?: DnsRecordType[]
+    debug?: boolean
 }
 
 export class DnsTypesValidationError extends Error {
@@ -34,28 +36,38 @@ export class DnsTypesValidationError extends Error {
     }
 }
 
+const toBoolean = (value?: string): boolean => {
+    if (!value) return false
+    const v = value.toLowerCase()
+    return v === '1' || v === 'true' || v === 'yes' || v === 'on'
+}
+
 export const parseDnsQuery = (raw: DnsQueryRaw): DnsQuery => {
-    const { domain, types } = raw
-
-    if (!types) {
-        return { domain }
+    const { domain, types, debug } = raw
+    const result: DnsQuery = {
+        domain,
     }
 
-    const parsed = types
-        .split(',')
-        .map(t => t.trim().toUpperCase())
-        .filter(Boolean) as DnsRecordType[]
+    if (types) {
+        const parsed = types
+            .split(',')
+            .map(t => t.trim().toUpperCase())
+            .filter(Boolean) as DnsRecordType[]
 
-    if (parsed.length === 0) {
-        return { domain }
+        if (parsed.length > 0) {
+            const invalid = parsed.filter(t => !recordTypesSet.has(t))
+            if (invalid.length > 0) {
+                throw new DnsTypesValidationError(invalid)
+            }
+
+            result.types = Array.from(new Set(parsed))
+        }
     }
 
-    const invalid = parsed.filter(t => !recordTypesSet.has(t))
-    if (invalid.length > 0) {
-        throw new DnsTypesValidationError(invalid)
+    const debugFlag = toBoolean(debug)
+    if (debugFlag) {
+        result.debug = true
     }
 
-    const unique = Array.from(new Set(parsed))
-
-    return { domain, types: unique }
+    return result
 }

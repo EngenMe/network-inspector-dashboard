@@ -11,13 +11,48 @@ const ALL_TYPES: DnsRecordType[] = ['A', 'AAAA', 'MX', 'CNAME', 'NS', 'SOA', 'TX
 
 export interface DnsServiceConfig {
     servers?: string[]
+    defaultTimeoutMs?: number
+}
+
+export class DnsTimeoutError extends Error {
+    code = 'TIMEOUT'
+    label: string
+    timeoutMs: number
+
+    constructor(label: string, timeoutMs: number) {
+        super(`Timeout while resolving ${label} after ${timeoutMs}ms`)
+        this.name = 'DnsTimeoutError'
+        this.label = label
+        this.timeoutMs = timeoutMs
+    }
 }
 
 export class DnsService {
+    private readonly defaultTimeoutMs: number
+
     constructor(config?: DnsServiceConfig) {
         if (config?.servers && config.servers.length > 0) {
             dns.setServers(config.servers)
         }
+        this.defaultTimeoutMs = config?.defaultTimeoutMs ?? 3000
+    }
+
+    private withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string) {
+        return new Promise<T>((resolve, reject) => {
+            const timer = setTimeout(() => {
+                reject(new DnsTimeoutError(label, timeoutMs))
+            }, timeoutMs)
+
+            promise
+                .then(value => {
+                    clearTimeout(timer)
+                    resolve(value)
+                })
+                .catch(err => {
+                    clearTimeout(timer)
+                    reject(err)
+                })
+        })
     }
 
     async resolveA(domain: string): Promise<string[]> {
@@ -63,27 +98,28 @@ export class DnsService {
     async resolveAll(
         domain: string,
         types?: DnsRecordType[],
+        options?: { timeoutMs?: number },
     ): Promise<DnsLookupResult> {
         const requestedTypes = types && types.length > 0 ? types : ALL_TYPES
-
         const records: DnsRecords = {}
+        const timeoutMs = options?.timeoutMs ?? this.defaultTimeoutMs
 
         const tasks: [DnsRecordType, Promise<unknown>][] = requestedTypes.map(t => {
             switch (t) {
                 case 'A':
-                    return ['A', this.resolveA(domain)]
+                    return ['A', this.withTimeout(this.resolveA(domain), timeoutMs, 'A')]
                 case 'AAAA':
-                    return ['AAAA', this.resolveAAAA(domain)]
+                    return ['AAAA', this.withTimeout(this.resolveAAAA(domain), timeoutMs, 'AAAA')]
                 case 'MX':
-                    return ['MX', this.resolveMX(domain)]
+                    return ['MX', this.withTimeout(this.resolveMX(domain), timeoutMs, 'MX')]
                 case 'CNAME':
-                    return ['CNAME', this.resolveCNAME(domain)]
+                    return ['CNAME', this.withTimeout(this.resolveCNAME(domain), timeoutMs, 'CNAME')]
                 case 'NS':
-                    return ['NS', this.resolveNS(domain)]
+                    return ['NS', this.withTimeout(this.resolveNS(domain), timeoutMs, 'NS')]
                 case 'SOA':
-                    return ['SOA', this.resolveSOA(domain)]
+                    return ['SOA', this.withTimeout(this.resolveSOA(domain), timeoutMs, 'SOA')]
                 case 'TXT':
-                    return ['TXT', this.resolveTXT(domain)]
+                    return ['TXT', this.withTimeout(this.resolveTXT(domain), timeoutMs, 'TXT')]
             }
         })
 
@@ -118,6 +154,18 @@ export class DnsService {
             }
         })
 
+        if (
+            !records.a &&
+            !records.aaaa &&
+            !records.mx &&
+            !records.cname &&
+            !records.ns &&
+            !records.soa &&
+            !records.txt
+        ) {
+            throw new Error('DNS resolution failed for all record types')
+        }
+
         return {
             domain,
             records,
@@ -126,4 +174,6 @@ export class DnsService {
     }
 }
 
-export const dnsService = new DnsService()
+export const dnsService = new DnsService({
+    defaultTimeoutMs: Number(process.env.DNS_RESOLVER_TIMEOUT_MS ?? '3000'),
+})
