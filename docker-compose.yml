@@ -1,0 +1,43 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: ./docker/backend/Dockerfile
+    env_file:
+      - ./backend/.env
+    working_dir: /app/backend
+    command: ["bun", "run", "dev"]
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
+    volumes:
+      - ./backend:/app/backend
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ./docker/frontend/Dockerfile
+    working_dir: /app/frontend
+    command: ["bun", "run", "dev"]
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./frontend:/app/frontend
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  network-tools:
+    build:
+      context: ./docker/network-tools
+    tty: true
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
