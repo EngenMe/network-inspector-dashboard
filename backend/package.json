@@ -1,0 +1,27 @@
+{
+  "name": "network-inspector-dashboard-backend",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run src/server.ts",
+    "start": "bun build src/server.ts --outdir dist && bun run dist/server.js",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.13",
+    "eslint": "^9.39.1",
+    "prettier": "^3.6.2",
+    "vitest": "^4.0.13"
+  },
+  "peerDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "fastify": "^5.6.2",
+    "fastify-cors": "^6.1.0",
+    "zod": "^4.1.12"
+  }
+}
