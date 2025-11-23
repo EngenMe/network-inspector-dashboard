@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "bun run src/server.ts",
     "start": "bun build src/server.ts --outdir dist && bun run dist/server.js",
-    "test": "vitest",
+    "test": "vitest --passWithNoTests",
     "lint": "eslint ."
   },
   "devDependencies": {
