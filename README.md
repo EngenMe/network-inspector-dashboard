@@ -49,7 +49,7 @@ Designed for learning, debugging, and demonstrating backend, networking, and Dev
 ### Backend
 - Bun Runtime
 - Node.js
-- Express or Fastify
+- Fastify
 - child_process networking utilities
 - Docker SDK
 

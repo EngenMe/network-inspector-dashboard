@@ -20,7 +20,7 @@
 - [ ] Initialize backend with Bun:
     - [ ] `bun init` inside `/backend`
 - [ ] Install core deps:
-    - [ ] `bun add express` or `bun add fastify`
+    - [ ] `bun add fastify`
     - [ ] `bun add dotenv`
     - [ ] `bun add zod`
 - [ ] Install dev deps:

@@ -66,7 +66,7 @@ A dashboard where users enter any domain/IP and instantly see:
 
 ### **Backend**
 - Node.js  
-- Express or Fastify  
+- Fastify  
 - Child_process execution  
 - Docker SDK  
 
