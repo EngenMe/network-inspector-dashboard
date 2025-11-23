@@ -80,7 +80,11 @@ export const fetchDns = async (
     }
 
     if (!res.ok) {
-        const payload = body as any
+        const payload = body as {
+            error?: string
+            message?: string
+            details?: unknown
+        }
         throw new ApiError({
             status: res.status,
             code: payload?.error ?? 'DNS_ERROR',
