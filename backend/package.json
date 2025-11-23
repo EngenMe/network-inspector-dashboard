@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "bun run src/server.ts",
     "start": "bun build src/server.ts --outdir dist && bun run dist/server.js",
-    "test": "vitest"
+    "test": "vitest",
+    "lint": "eslint ."
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -13,7 +14,7 @@
     "@vitest/coverage-v8": "^4.0.13",
     "eslint": "^9.39.1",
     "prettier": "^3.6.2",
-    "vitest": "^4.0.13"
+    "vitest": "^4.0.13",
   },
   "peerDependencies": {
     "typescript": "^5.9.3"

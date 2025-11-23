@@ -1,3 +1,4 @@
+![CI](https://github.com/engenme/network-inspector-dashboard/actions/workflows/ci.yml/badge.svg)
 # 🌐 Network Inspector Dashboard
 
 A full-stack networking analysis toolkit that provides real-time diagnostics for any domain or IP address.
