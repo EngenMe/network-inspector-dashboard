@@ -6,6 +6,6 @@ export type HttpOutput = {
     finalUrl: string
     statusCode: number
     statusText: string
-    protocol: string
+    protocolVersion: string
     headers: Record<string, string>
 }
