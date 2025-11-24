@@ -60,6 +60,57 @@ Responsibilities:
 - Communicate using child_process with tools like dig, ping, traceroute, openssl
 - Normalize output into clean JSON
 
+## 4.1 DNS Module
+
+The DNS module provides all domain-related lookups used by the dashboard.  
+It supports multiple record types and allows switching between the Node.js resolver and the `dig` CLI inside the `network-tools` container.
+
+### Structure
+
+/backend/src/modules/dns
+- dns.service.ts
+- dns.schema.ts
+- dns.types.ts
+- index.ts
+
+### Responsibilities
+
+- Validate incoming queries using Zod
+- Resolve DNS records: A, AAAA, MX, CNAME, NS, SOA, TXT
+- Support two resolution engines:
+  - Node.js `dns/promises`
+  - `dig` executed inside the `network-tools` container
+- Normalize raw output into structured JSON
+- Apply per-query timeouts
+- Map resolver errors (ENOTFOUND, SERVFAIL, TIMEOUT)
+
+### Resolution Flow
+
+Frontend → GET /api/dns?domain=example.com  
+↓  
+Zod schema validates domain + record types  
+↓  
+dns.service selects resolver engine:
+- Node resolver (default)
+- dig (if DNS_USE_DIG=true)  
+  ↓  
+  Queries run with timeout + error handling  
+  ↓  
+  Normalized JSON returned to frontend
+
+### Environment Variables
+
+- `DNS_RESOLVER_HOST` — Custom DNS server (e.g., 8.8.8.8, 1.1.1.1, Docker DNS)
+- `DNS_RESOLVER_TIMEOUT_MS` — Timeout applied to each record lookup
+- `DNS_USE_DIG` — Force use of dig instead of Node resolver
+
+### Why This Module Matters
+
+- Ensures DNS consistency inside Docker
+- Matches real network debugging tools
+- Enables accurate “Local Mode” scans
+- Powers the DNS card in the dashboard
+
 ## 5. Frontend Architecture
 
 Framework: Next.js 16  
