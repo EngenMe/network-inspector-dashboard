@@ -14,36 +14,42 @@ export class TracerouteService {
             const { stdout } = await execAsync(cmd);
             const lines = stdout.split('\n').slice(1);
 
-            const hops: TracerouteHop[] = lines
-                .map((line) => line.trim())
-                .filter((line) => line.length > 0)
-                .map((line) => {
-                    const parts = line.split(/\s+/);
+            const hops: TracerouteHop[] = [];
 
-                    const hop = parseInt(parts[0], 10);
+            for (const rawLine of lines) {
+                const line = rawLine.trim();
+                if (!line) continue;
 
-                    if (line.includes('*')) {
-                        return {
-                            hop,
-                            latencies: [],
-                            timeout: true,
-                        };
-                    }
+                const parts = line.split(/\s+/);
+                const hopNumber = Number.parseInt(parts[0], 10);
 
-                    const ip = parts[1];
+                if (!Number.isFinite(hopNumber)) {
+                    continue;
+                }
 
-                    const latencies = parts
-                        .slice(2)
-                        .filter((v) => v.includes('ms'))
-                        .map((v) => parseFloat(v.replace('ms', '')));
+                if (line.includes('*')) {
+                    hops.push({
+                        hop: hopNumber,
+                        latencies: [],
+                        timeout: true,
+                    });
+                    continue;
+                }
 
-                    return {
-                        hop,
-                        ip,
-                        latencies,
-                        timeout: false,
-                    };
+                const ip = parts[1];
+
+                const latencies = parts
+                    .slice(2)
+                    .filter((v) => v.includes('ms'))
+                    .map((v) => Number.parseFloat(v.replace('ms', '')));
+
+                hops.push({
+                    hop: hopNumber,
+                    ip,
+                    latencies,
+                    timeout: false,
                 });
+            }
 
             return {
                 hops,
