@@ -8,7 +8,7 @@ import {
 import { DnsTimeoutError } from '../modules/dns/dns.service'
 
 const mapDnsError = (error: unknown, debug: boolean) => {
-    const e = error as any
+    const e = error as { code?: string; message?: string; stack?: string }
     const code: string | undefined = e?.code
     const base = {
         debug: debug
@@ -72,7 +72,7 @@ const mapDnsError = (error: unknown, debug: boolean) => {
 }
 
 export async function dnsRoutes(app: FastifyInstance) {
-    app.get('/api/dns', async (request, reply) => {
+    app.get('/dns', async (request, reply) => {
         const parseRaw = dnsQueryRawSchema.safeParse(request.query)
 
         if (!parseRaw.success) {

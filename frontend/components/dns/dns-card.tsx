@@ -263,30 +263,35 @@ function ValueList({ items, emptyLabel, onCopy, copied }: ValueListProps) {
     }
 
     return (
-        <ScrollArea className="max-h-56 rounded-md border">
-            <ul className="divide-y text-sm">
-                {items.map((value, idx) => (
-                    <li key={`${value}-${idx}`} className="flex items-center justify-between gap-2 px-3 py-2">
-                        <span className="break-all font-mono text-xs">{value}</span>
-                        <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7"
-                            onClick={() => onCopy(value)}
+        <div className="space-y-2">
+            {/* ⬇️ use fixed height */}
+            <ScrollArea className="h-56 rounded-md border">
+                <ul className="divide-y text-sm">
+                    {items.map((value, index) => (
+                        <li
+                            key={`${value}-${index}`}
+                            className="flex items-center justify-between gap-2 px-3 py-2"
                         >
-                            <Copy className="h-3 w-3" />
-                            <span className="sr-only">Copy</span>
-                        </Button>
-                    </li>
-                ))}
-            </ul>
+                            <span className="break-all font-mono text-xs">{value}</span>
+                            <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                onClick={() => onCopy(value)}
+                            >
+                                <Copy className="h-3 w-3" />
+                                <span className="sr-only">Copy</span>
+                            </Button>
+                        </li>
+                    ))}
+                </ul>
+            </ScrollArea>
+
             {copied && (
-                <div className="border-t px-3 py-1 text-xs text-muted-foreground">
-                    Copied to clipboard
-                </div>
+                <div className="text-xs text-muted-foreground">Copied to clipboard</div>
             )}
-        </ScrollArea>
+        </div>
     )
 }
 
@@ -306,8 +311,9 @@ function MxList({ items, emptyLabel, onCopy, copied }: MxListProps) {
         )
     }
 
+    // ⬇️ fixed height here as well
     return (
-        <ScrollArea className="max-h-56 rounded-md border">
+        <ScrollArea className="h-56 rounded-md border">
             <table className="w-full border-collapse text-left text-xs">
                 <thead className="bg-muted">
                 <tr>
@@ -322,7 +328,9 @@ function MxList({ items, emptyLabel, onCopy, copied }: MxListProps) {
                     return (
                         <tr key={`${mx.exchange}-${mx.priority}-${idx}`} className="border-t">
                             <td className="px-3 py-2 align-top">{mx.priority}</td>
-                            <td className="px-3 py-2 align-top break-all font-mono">{mx.exchange}</td>
+                            <td className="px-3 py-2 align-top break-all font-mono">
+                                {mx.exchange}
+                            </td>
                             <td className="px-3 py-2 align-top">
                                 <Button
                                     type="button"

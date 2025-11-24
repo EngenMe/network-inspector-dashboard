@@ -1,11 +1,22 @@
 import Fastify from "fastify"
+import cors from '@fastify/cors'
 import dotenv from "dotenv"
 import routes from "./routes"
 
 dotenv.config()
 
-const app = Fastify()
+const app = Fastify({
+    logger: true, //todo: change to be if env is dev
+})
 
+const frontendPort =
+    process.env.FRONTEND_PORT ??
+    process.env.NEXT_PUBLIC_FRONTEND_PORT ??
+    '3000'
+
+await app.register(cors, {
+    origin: `http://localhost:${frontendPort}`,
+})
 app.register(routes, { prefix: "/api" })
 
 app.get("/api/health", () => ({ status: "ok" }))
