@@ -45,7 +45,7 @@ describe('Results page', () => {
     })
 
     it('renders without errors on a mobile-sized viewport', () => {
-        ;(globalThis as any).innerWidth = 375
+        ;(globalThis as unknown as { innerWidth: number }).innerWidth = 375
         render(<ResultsPage />)
 
         const titles = [

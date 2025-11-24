@@ -1,7 +1,6 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import AppShell from '@/components/layout/AppShell'
 import {
     DNSCard,
     PingCard,

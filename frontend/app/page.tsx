@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import AppShell from '@/components/layout/AppShell'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
