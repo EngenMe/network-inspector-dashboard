@@ -80,22 +80,22 @@ export class DnsService {
     // Resolve Methods
     // ---------------------
 
-    private resolveA = (domain: string): Promise<string[]> => dns.resolve4(domain)
+    resolveA = (domain: string): Promise<string[]> => dns.resolve4(domain)
 
-    private resolveAAAA = (domain: string): Promise<string[]> =>
+    resolveAAAA = (domain: string): Promise<string[]> =>
         dns.resolve6(domain)
 
-    private resolveMX = async (domain: string): Promise<MxRecord[]> => {
+    resolveMX = async (domain: string): Promise<MxRecord[]> => {
         const records = await dns.resolveMx(domain)
         return records.map(r => ({ priority: r.priority, exchange: r.exchange }))
     }
 
-    private resolveCNAME = (domain: string): Promise<string[]> =>
+    resolveCNAME = (domain: string): Promise<string[]> =>
         dns.resolveCname(domain)
 
-    private resolveNS = (domain: string): Promise<string[]> => dns.resolveNs(domain)
+    resolveNS = (domain: string): Promise<string[]> => dns.resolveNs(domain)
 
-    private resolveSOA = async (domain: string): Promise<SoaRecord | null> => {
+    resolveSOA = async (domain: string): Promise<SoaRecord | null> => {
         const r = await dns.resolveSoa(domain)
         return r
             ? {
@@ -110,7 +110,7 @@ export class DnsService {
             : null
     }
 
-    private resolveTXT = async (domain: string): Promise<string[]> => {
+    resolveTXT = async (domain: string): Promise<string[]> => {
         const entries = await dns.resolveTxt(domain)
         return entries.map(x => x.join(""))
     }
