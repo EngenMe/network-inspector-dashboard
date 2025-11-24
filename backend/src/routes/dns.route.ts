@@ -7,7 +7,7 @@ import {
 } from '../modules/dns/dns.schema'
 import { DnsTimeoutError } from '../modules/dns/dns.service'
 
-const mapDnsError = (error: unknown, debug: boolean) => {
+export const mapDnsError = (error: unknown, debug: boolean) => {
     const e = error as { code?: string; message?: string; stack?: string }
     const code: string | undefined = e?.code
     const base = {
