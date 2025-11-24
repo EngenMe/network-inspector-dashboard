@@ -3,12 +3,15 @@ import { tlsQuerySchema } from '../modules/tls/tls.schema'
 import { getTlsInfo } from '../modules/tls/tls.service'
 
 export default async function tlsRoute(app: FastifyInstance) {
-    app.get('/api/tls', async (request, reply) => {
+    app.get('/tls', async (request, reply) => {
         const parsed = tlsQuerySchema.safeParse(request.query)
         if (!parsed.success) return reply.status(400).send({ error: 'INVALID_QUERY' })
 
         try {
-            const result = await getTlsInfo(parsed.data)
+            const result = await getTlsInfo({
+                domain: parsed.data.domain,
+                port: parsed.data.port,
+            })
             return reply.send(result)
         } catch (err: any) {
             if (err.message === 'DNS_RESOLUTION_FAILED')
