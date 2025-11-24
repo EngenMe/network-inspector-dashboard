@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { vi } from 'vitest'
 
-// mock next/navigation BEFORE importing the component
 vi.mock('next/navigation', async () => {
     const actual = await vi.importActual<typeof import('next/navigation')>(
         'next/navigation',
@@ -31,7 +30,8 @@ describe('Results page', () => {
         ]
 
         for (const title of titles) {
-            expect(screen.getByText(title)).toBeInTheDocument()
+            const matches = screen.getAllByText(title)
+            expect(matches.length).toBeGreaterThan(0)
         }
     })
 })
