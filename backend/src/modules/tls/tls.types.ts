@@ -1,3 +1,8 @@
+export type TlsInput = {
+    domain: string
+    port: number
+}
+
 export type TlsCertificateInfo = {
     subjectCommonName: string
     issuerCommonName: string
@@ -15,9 +20,4 @@ export type TlsInfo = {
     daysRemaining: number
     isExpired: boolean
     isSelfSigned: boolean
-}
-
-export type TlsInput = {
-    domain: string
-    port: number
 }
