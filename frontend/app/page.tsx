@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Globe2, Loader2, SlidersHorizontal, Code2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +13,8 @@ import type { DnsLookupResult, DnsRecordType } from '@/lib/types/dns'
 const allRecordTypes: DnsRecordType[] = ['A', 'AAAA', 'MX', 'CNAME', 'NS', 'SOA', 'TXT']
 
 export default function Page() {
+    const router = useRouter()
+
     const [domain, setDomain] = useState('')
     const [selectedTypes, setSelectedTypes] = useState<DnsRecordType[]>([])
     const [result, setResult] = useState<DnsLookupResult | undefined>(undefined)
@@ -82,6 +85,16 @@ export default function Page() {
         runScan()
     }
 
+    const handleScanAllModules = () => {
+        const trimmed = domain.trim()
+        if (!trimmed) {
+            setError('Please enter a domain to scan.')
+            return
+        }
+
+        router.push(`/results?target=${encodeURIComponent(trimmed)}`)
+    }
+
     const hasSelection = selectedTypes.length > 0
     const trimmedDomain = domain.trim()
 
@@ -145,21 +158,35 @@ export default function Page() {
                             </div>
                         )}
                     </div>
+
                     <div className="flex flex-col gap-2 md:w-auto">
-                        <Button
-                            type="submit"
-                            disabled={isLoading || !trimmedDomain}
-                            className="w-full md:w-32"
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    Scanning…
-                                </>
-                            ) : (
-                                'Run lookup'
-                            )}
-                        </Button>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                            <Button
+                                type="submit"
+                                disabled={isLoading || !trimmedDomain}
+                                className="w-full sm:w-32"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Scanning…
+                                    </>
+                                ) : (
+                                    'Run lookup'
+                                )}
+                            </Button>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={!trimmedDomain}
+                                onClick={handleScanAllModules}
+                                className="w-full sm:w-40"
+                            >
+                                Scan all modules
+                            </Button>
+                        </div>
+
                         <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground">
                             <span>Quick targets:</span>
                             <button
