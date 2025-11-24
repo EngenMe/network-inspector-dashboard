@@ -7,6 +7,10 @@ services:
       dockerfile: ./docker/backend/Dockerfile
     env_file:
       - ./backend/.env
+    environment:
+      DNS_USE_DIG: "${DNS_USE_DIG:-0}"
+      DNS_RESOLVER_HOST: "${DNS_RESOLVER_HOST:-}"
+      DNS_RESOLVER_TIMEOUT_MS: "${DNS_RESOLVER_TIMEOUT_MS:-3000}"
     working_dir: /app/backend
     command: ["bun", "run", "dev"]
     ports:
