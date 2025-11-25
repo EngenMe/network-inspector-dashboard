@@ -163,13 +163,11 @@ export default function DnsPage() {
                     </Button>
                     <Button
                         size="sm"
-                        variant="outline"
-                        disabled={isLoading}
                         onClick={() =>
-                            router.replace(`/dns?domain=${encodeURIComponent(domain)}`)
+                            router.push(`/results?target=${encodeURIComponent(domain)}`)
                         }
                     >
-                        {isLoading ? 'Refreshing…' : 'Refresh'}
+                        View results
                     </Button>
                     <Badge
                         variant="outline"

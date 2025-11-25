@@ -82,6 +82,11 @@ export default function Page() {
                                     setTarget(e.target.value)
                                     if (error) setError('')
                                 }}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                        handleRunLookup()
+                                    }
+                                }}
                                 className="h-11"
                             />
                             {showError && (
