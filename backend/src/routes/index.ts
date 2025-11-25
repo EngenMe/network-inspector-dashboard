@@ -9,6 +9,7 @@ export default async function routes(app: FastifyInstance) {
     await app.register(dnsRoutes);
     await app.register(pingRoutes);
     await app.register(tracerouteRoute);
+    await app.register(dockerRoute);
     await tlsRoute(app);
     await httpRoute(app)
 }
