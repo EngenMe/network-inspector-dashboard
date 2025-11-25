@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import {
     DNSCard,
@@ -10,42 +11,153 @@ import {
     MTUMSSCard,
     DockerNetworkCard,
 } from '@/components/results/dashboard-cards'
+import { fetchDns, ApiError } from '@/lib/api/dns'
+import type { DnsLookupResult } from '@/lib/types/dns'
+import { fetchPing, PingApiError } from '@/lib/api/ping'
+import type { PingResult } from '@/lib/types/ping'
+
+type ScanStatus = 'idle' | 'loading' | 'ready'
+
+interface DockerNetworkSummary {
+    networks: { name: string; driver?: string; subnet?: string }[]
+    containers: { id: string; name: string; status: string; networks: string[] }[]
+    error: string | null
+}
+
+const backendPort =
+    process.env.NEXT_PUBLIC_BACKEND_PORT ??
+    process.env.BACKEND_PORT ??
+    '4000'
+
+const defaultBaseUrl = `http://localhost:${backendPort}`
 
 export default function ResultsPage() {
     const searchParams = useSearchParams()
     const rawTarget = searchParams.get('target')
     const target = rawTarget?.trim() ?? ''
 
-    const isLoading = false
-    const hasData = true
+    const [scanStatus, setScanStatus] = useState<ScanStatus>('idle')
+    const [lastUpdated, setLastUpdated] = useState<string | null>(null)
 
-    const dockerData = {
-        networks: [{ name: 'bridge0', driver: 'bridge', subnet: '172.18.0.0/16' }],
-        containers: [
-            {
-                id: '1234567890abc',
-                name: 'backend',
-                status: 'running',
-                networks: ['bridge0'],
-            },
-        ],
-        error: null,
-    }
+    const [dnsResult, setDnsResult] = useState<DnsLookupResult | null>(null)
+    const [dnsError, setDnsError] = useState<string | null>(null)
 
-    const status: 'idle' | 'loading' | 'ready' =
-        isLoading ? 'loading' : hasData ? 'ready' : 'idle'
-    const showDashboard = status !== 'idle'
+    const [pingResult, setPingResult] = useState<PingResult | null>(null)
+    const [pingError, setPingError] = useState<string | null>(null)
+
+    const [dockerData, setDockerData] = useState<DockerNetworkSummary | null>(
+        null,
+    )
+    const [dockerError, setDockerError] = useState<string | null>(null)
+
+    useEffect(() => {
+        if (!target) {
+            setScanStatus('idle')
+            setDnsResult(null)
+            setDnsError(null)
+            setPingResult(null)
+            setPingError(null)
+            setDockerData(null)
+            setDockerError(null)
+            setLastUpdated(null)
+            return
+        }
+
+        let cancelled = false
+        setScanStatus('loading')
+        setDnsError(null)
+        setPingError(null)
+        setDockerError(null)
+
+        const dnsPromise = fetchDns(target)
+            .then(res => {
+                if (cancelled) return
+                setDnsResult(res)
+            })
+            .catch(err => {
+                if (cancelled) return
+                if (err instanceof ApiError) {
+                    setDnsError(err.message)
+                } else {
+                    setDnsError('DNS lookup failed')
+                }
+            })
+
+        const pingPromise = fetchPing(target)
+            .then(res => {
+                if (cancelled) return
+                setPingResult(res)
+            })
+            .catch(err => {
+                if (cancelled) return
+                if (err instanceof PingApiError) {
+                    setPingError(err.message)
+                } else {
+                    setPingError('Ping failed')
+                }
+            })
+
+        const dockerPromise = fetch(`${defaultBaseUrl}/api/docker/network`)
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`Docker network error: ${res.status}`)
+                }
+                return res.json()
+            })
+            .then((body: any) => {
+                if (cancelled) return
+                setDockerData({
+                    networks: body.networks ?? [],
+                    containers: body.containers ?? [],
+                    error: body.error ?? null,
+                })
+            })
+            .catch(err => {
+                if (cancelled) return
+                setDockerError(err.message ?? 'Docker network error')
+                if (!dockerData) {
+                    setDockerData({
+                        networks: [],
+                        containers: [],
+                        error: err.message ?? 'Docker network error',
+                    })
+                }
+            })
+
+        Promise.allSettled([dnsPromise, pingPromise, dockerPromise]).then(() => {
+            if (cancelled) return
+            setScanStatus('ready')
+            setLastUpdated(new Date().toISOString())
+        })
+
+        return () => {
+            cancelled = true
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [target])
+
+    // No target => keep old mock behaviour for tests
+    const effectiveStatus: ScanStatus = target ? scanStatus : 'ready'
+    const showDashboard = effectiveStatus !== 'idle'
 
     const headingId = 'scan-results-heading'
     const descriptionId = 'scan-results-description'
     const statusId = 'scan-status-message'
+
+    const lastUpdatedDisplay = target
+        ? lastUpdated
+            ? new Date(lastUpdated).toLocaleString()
+            : '—'
+        : '— mock data'
+
+    const lastUpdatedDateTime = lastUpdated ?? '0000-00-00T00:00:00Z'
 
     return (
         <main
             className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8"
             aria-labelledby={headingId}
             aria-describedby={descriptionId}
-            aria-busy={status === 'loading'}
+            aria-busy={effectiveStatus === 'loading'}
         >
             <header className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
                 <div className="space-y-1">
@@ -70,42 +182,113 @@ export default function ResultsPage() {
                         )}
                     </p>
                 </div>
-                <div className="text-xs text-muted-foreground text-right">
+
+                <div className="text-right text-xs text-muted-foreground">
                     <div aria-live="polite" id={statusId}>
                         Status:{' '}
                         <span className="font-mono">
-                            {status === 'loading'
-                                ? 'loading…'
-                                : status === 'ready'
-                                    ? 'ready (mock data)'
-                                    : 'idle'}
-                        </span>
+              {effectiveStatus === 'loading'
+                  ? 'loading…'
+                  : effectiveStatus === 'ready' && !target
+                      ? 'ready (mock data)'
+                      : 'ready'}
+            </span>
                     </div>
                     <div>
                         Last updated:{' '}
-                        <time className="font-mono" dateTime="0000-00-00T00:00:00Z">
-                            {hasData ? '— mock data' : '—'}
+                        <time className="font-mono" dateTime={lastUpdatedDateTime}>
+                            {lastUpdatedDisplay}
                         </time>
                     </div>
                 </div>
             </header>
+
+            {target && (
+                <section
+                    aria-label="Live scan summary"
+                    className="rounded-md border bg-muted/40 px-4 py-3 text-xs text-muted-foreground"
+                >
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide">
+                        Live summary
+                    </p>
+                    <div className="flex flex-wrap gap-4">
+                        <div>
+                            <span className="font-mono">DNS</span>:{' '}
+                            {dnsError ? (
+                                <span className="text-destructive">error</span>
+                            ) : dnsResult ? (
+                                `${Object.keys(dnsResult.records ?? {}).length} record type(s)`
+                            ) : (
+                                'pending…'
+                            )}
+                        </div>
+                        <div>
+                            <span className="font-mono">Ping</span>:{' '}
+                            {pingError ? (
+                                <span className="text-destructive">error</span>
+                            ) : pingResult ? (
+                                (() => {
+                                    const stats = pingResult.stats ?? (pingResult as any)
+                                    const avg =
+                                        stats?.avgRttMs ??
+                                        stats?.avg ??
+                                        undefined
+                                    const loss =
+                                        stats?.packetLoss ??
+                                        stats?.loss ??
+                                        undefined
+                                    if (avg == null && loss == null) return 'received'
+                                    const parts: string[] = []
+                                    if (typeof avg === 'number') {
+                                        parts.push(`${avg.toFixed(1)} ms avg`)
+                                    }
+                                    if (typeof loss === 'number') {
+                                        parts.push(`${loss}% loss`)
+                                    }
+                                    return parts.join(', ')
+                                })()
+                            ) : (
+                                'pending…'
+                            )}
+                        </div>
+                        <div>
+                            <span className="font-mono">Docker</span>:{' '}
+                            {dockerError ? (
+                                <span className="text-destructive">error</span>
+                            ) : dockerData ? (
+                                `${dockerData.networks.length} network(s), ${dockerData.containers.length} container(s)`
+                            ) : (
+                                'pending…'
+                            )}
+                        </div>
+                    </div>
+                </section>
+            )}
 
             {showDashboard ? (
                 <section
                     aria-label="Network diagnostics dashboard"
                     className="grid auto-rows-[1fr] gap-4 sm:grid-cols-2 xl:grid-cols-3"
                 >
-                    <DNSCard status={status} />
-                    <PingCard status={status} />
-                    <TracerouteCard status={status} />
-                    <TLSCard status={status} />
-                    <HttpCard status={status} />
-                    <MTUMSSCard status={status} />
+                    <DNSCard
+                        status={effectiveStatus}
+                        dns={dnsResult}
+                        error={dnsError}
+                    />
+                    <PingCard
+                        status={effectiveStatus}
+                        ping={pingResult}
+                        error={pingError}
+                    />
+                    <TracerouteCard status={effectiveStatus} />
+                    <TLSCard status={effectiveStatus} />
+                    <HttpCard status={effectiveStatus} />
+                    <MTUMSSCard status={effectiveStatus} />
                     <DockerNetworkCard
-                        status={status}
-                        networks={dockerData.networks}
-                        containers={dockerData.containers}
-                        error={dockerData.error}
+                        status={effectiveStatus}
+                        networks={dockerData?.networks ?? []}
+                        containers={dockerData?.containers ?? []}
+                        error={dockerData?.error ?? dockerError ?? null}
                         className="sm:col-span-2 xl:col-span-3"
                     />
                 </section>
