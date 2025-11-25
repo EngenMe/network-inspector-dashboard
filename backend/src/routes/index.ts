@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify'
+import mtuRoute from "./mtu.route.ts";
 import httpRoute from "./http.route.ts";
 import tlsRoute from "./tls.route.ts";
 import tracerouteRoute from "./traceroute.route";
@@ -11,6 +12,7 @@ export default async function routes(app: FastifyInstance) {
     await app.register(pingRoutes);
     await app.register(tracerouteRoute);
     await app.register(dockerRoute);
+    await app.register(mtuRoute);
     await tlsRoute(app);
     await httpRoute(app);
 }
