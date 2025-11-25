@@ -49,7 +49,10 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
         try {
             await navigator.clipboard.writeText(value)
             setCopied(label)
-            setTimeout(() => setCopied(current => (current === label ? null : current)), 1500)
+            setTimeout(
+                () => setCopied(current => (current === label ? null : current)),
+                1500,
+            )
         } catch {
             setCopied(null)
         }
@@ -58,13 +61,16 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
     if (isLoading) {
         return (
             <Card className="w-full">
-                <CardHeader>
-                    <Skeleton className="h-5 w-32" />
-                    <Skeleton className="mt-2 h-4 w-48" />
+                <CardHeader className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                        <Skeleton className="h-5 w-20" />
+                        <Skeleton className="h-5 w-32" />
+                    </div>
+                    <Skeleton className="h-4 w-40" />
                 </CardHeader>
                 <CardContent className="space-y-3">
                     <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-32 w-full" />
+                    <Skeleton className="h-40 w-full" />
                 </CardContent>
             </Card>
         )
@@ -75,15 +81,17 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
             <Card className="w-full">
                 <CardHeader>
                     <CardTitle>DNS</CardTitle>
-                    <CardDescription>{domain || 'No domain provided'}</CardDescription>
+                    <CardDescription className="font-mono text-xs">
+                        {domain || 'No domain provided'}
+                    </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                    <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                        {error}
+                    <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                        DNS lookup failed: {error}
                     </div>
                     {onRetry && (
                         <Button size="sm" variant="outline" onClick={onRetry}>
-                            Retry
+                            Retry lookup
                         </Button>
                     )}
                 </CardContent>
@@ -98,7 +106,7 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
                     <CardTitle>DNS</CardTitle>
                     <CardDescription>Waiting for a scan…</CardDescription>
                 </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
+                <CardContent className="text-xs text-muted-foreground">
                     Run a scan to see DNS records for this domain.
                 </CardContent>
             </Card>
@@ -131,6 +139,7 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
             case 'A':
                 return (
                     <ValueList
+                        title="A records"
                         items={records.a ?? []}
                         emptyLabel="No A records found"
                         onCopy={value => handleCopy(value, 'A')}
@@ -140,6 +149,7 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
             case 'AAAA':
                 return (
                     <ValueList
+                        title="AAAA records"
                         items={records.aaaa ?? []}
                         emptyLabel="No AAAA records found"
                         onCopy={value => handleCopy(value, 'AAAA')}
@@ -149,6 +159,7 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
             case 'MX':
                 return (
                     <MxList
+                        title="MX records"
                         items={records.mx ?? []}
                         emptyLabel="No MX records found"
                         onCopy={value => handleCopy(value, 'MX')}
@@ -158,6 +169,7 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
             case 'CNAME':
                 return (
                     <ValueList
+                        title="CNAME records"
                         items={records.cname ?? []}
                         emptyLabel="No CNAME records found"
                         onCopy={value => handleCopy(value, 'CNAME')}
@@ -167,6 +179,7 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
             case 'NS':
                 return (
                     <ValueList
+                        title="NS records"
                         items={records.ns ?? []}
                         emptyLabel="No NS records found"
                         onCopy={value => handleCopy(value, 'NS')}
@@ -176,6 +189,7 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
             case 'SOA':
                 return (
                     <SoaView
+                        title="SOA record"
                         soa={records.soa ?? null}
                         emptyLabel="No SOA record found"
                         onCopy={value => handleCopy(value, 'SOA')}
@@ -185,6 +199,7 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
             case 'TXT':
                 return (
                     <ValueList
+                        title="TXT records"
                         items={records.txt ?? []}
                         emptyLabel="No TXT records found"
                         onCopy={value => handleCopy(value, 'TXT')}
@@ -200,11 +215,11 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
                 <div className="space-y-1">
                     <CardTitle className="flex items-center gap-2">
                         DNS
-                        <Badge variant="outline" className="text-xs font-normal">
-                            {domain}
+                        <Badge variant="outline" className="font-mono text-[11px] font-normal">
+                            {domain || '—'}
                         </Badge>
                     </CardTitle>
-                    <CardDescription className="text-xs">
+                    <CardDescription className="text-[11px]">
                         Last resolved:{' '}
                         {resolvedAt ? new Date(resolvedAt).toLocaleString() : 'unknown'}
                     </CardDescription>
@@ -221,7 +236,7 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
                                     key={type}
                                     value={type}
                                     disabled={!isActive && !count}
-                                    className="flex items-center gap-1"
+                                    className="flex items-center gap-1 text-xs"
                                 >
                                     <span>{type}</span>
                                     <Badge
@@ -247,91 +262,50 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
 }
 
 type ValueListProps = {
+    title: string
     items: string[]
     emptyLabel: string
     onCopy: (value: string) => void
     copied?: boolean
 }
 
-function ValueList({ items, emptyLabel, onCopy, copied }: ValueListProps) {
+function ValueList({ title, items, emptyLabel, onCopy, copied }: ValueListProps) {
     if (!items.length) {
         return (
-            <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-                {emptyLabel}
+            <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">{title}</p>
+                <div className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                    {emptyLabel}
+                </div>
             </div>
+        )
+    }
+
+    let copiedNode: JSX.Element | undefined
+    if (copied) {
+        copiedNode = (
+            <div className="text-[11px] text-muted-foreground">Copied to clipboard</div>
         )
     }
 
     return (
         <div className="space-y-2">
-            {/* ⬇️ use fixed height */}
+            <p className="text-xs font-medium text-muted-foreground">{title}</p>
             <ScrollArea className="h-56 rounded-md border">
-                <ul className="divide-y text-sm">
+                <table className="w-full border-collapse text-left text-xs">
+                    <thead className="bg-muted/60">
+                    <tr>
+                        <th className="px-3 py-2 font-medium">Value</th>
+                        <th className="px-3 py-2 text-right font-medium">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
                     {items.map((value, index) => (
-                        <li
-                            key={`${value}-${index}`}
-                            className="flex items-center justify-between gap-2 px-3 py-2"
-                        >
-                            <span className="break-all font-mono text-xs">{value}</span>
-                            <Button
-                                type="button"
-                                size="icon"
-                                variant="ghost"
-                                className="h-7 w-7"
-                                onClick={() => onCopy(value)}
-                            >
-                                <Copy className="h-3 w-3" />
-                                <span className="sr-only">Copy</span>
-                            </Button>
-                        </li>
-                    ))}
-                </ul>
-            </ScrollArea>
-
-            {copied && (
-                <div className="text-xs text-muted-foreground">Copied to clipboard</div>
-            )}
-        </div>
-    )
-}
-
-type MxListProps = {
-    items: { priority: number; exchange: string }[]
-    emptyLabel: string
-    onCopy: (value: string) => void
-    copied?: boolean
-}
-
-function MxList({ items, emptyLabel, onCopy, copied }: MxListProps) {
-    if (!items.length) {
-        return (
-            <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-                {emptyLabel}
-            </div>
-        )
-    }
-
-    // ⬇️ fixed height here as well
-    return (
-        <ScrollArea className="h-56 rounded-md border">
-            <table className="w-full border-collapse text-left text-xs">
-                <thead className="bg-muted">
-                <tr>
-                    <th className="px-3 py-2 font-medium">Priority</th>
-                    <th className="px-3 py-2 font-medium">Exchange</th>
-                    <th className="px-3 py-2"></th>
-                </tr>
-                </thead>
-                <tbody>
-                {items.map((mx, idx) => {
-                    const value = `${mx.priority} ${mx.exchange}`
-                    return (
-                        <tr key={`${mx.exchange}-${mx.priority}-${idx}`} className="border-t">
-                            <td className="px-3 py-2 align-top">{mx.priority}</td>
-                            <td className="px-3 py-2 align-top break-all font-mono">
-                                {mx.exchange}
-                            </td>
+                        <tr key={`${value}-${index}`} className="border-t">
                             <td className="px-3 py-2 align-top">
+                                <span className="break-all font-mono text-[11px]">{value}</span>
+                            </td>
+                            <td className="px-3 py-2 align-top text-right">
                                 <Button
                                     type="button"
                                     size="icon"
@@ -340,24 +314,99 @@ function MxList({ items, emptyLabel, onCopy, copied }: MxListProps) {
                                     onClick={() => onCopy(value)}
                                 >
                                     <Copy className="h-3 w-3" />
-                                    <span className="sr-only">Copy</span>
+                                    <span className="sr-only">Copy value</span>
                                 </Button>
                             </td>
                         </tr>
-                    )
-                })}
-                </tbody>
-            </table>
-            {copied && (
-                <div className="border-t px-3 py-1 text-xs text-muted-foreground">
-                    Copied to clipboard
+                    ))}
+                    </tbody>
+                </table>
+            </ScrollArea>
+            {copiedNode}
+        </div>
+    )
+}
+
+type MxListProps = {
+    title: string
+    items: { priority: number; exchange: string }[]
+    emptyLabel: string
+    onCopy: (value: string) => void
+    copied?: boolean
+}
+
+function MxList({ title, items, emptyLabel, onCopy, copied }: MxListProps) {
+    if (!items.length) {
+        return (
+            <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">{title}</p>
+                <div className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                    {emptyLabel}
                 </div>
-            )}
-        </ScrollArea>
+            </div>
+        )
+    }
+
+    let copiedNode: JSX.Element | undefined
+    if (copied) {
+        copiedNode = (
+            <div className="border-t px-3 py-1 text-[11px] text-muted-foreground">
+                Copied to clipboard
+            </div>
+        )
+    }
+
+    return (
+        <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">{title}</p>
+            <ScrollArea className="h-56 rounded-md border">
+                <table className="w-full border-collapse text-left text-xs">
+                    <thead className="bg-muted/60">
+                    <tr>
+                        <th className="px-3 py-2 font-medium">Priority</th>
+                        <th className="px-3 py-2 font-medium">Exchange</th>
+                        <th className="px-3 py-2 text-right font-medium">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {items.map((mx, idx) => {
+                        const value = `${mx.priority} ${mx.exchange}`
+                        return (
+                            <tr
+                                key={`${mx.exchange}-${mx.priority}-${idx}`}
+                                className="border-t"
+                            >
+                                <td className="px-3 py-2 align-top">{mx.priority}</td>
+                                <td className="px-3 py-2 align-top">
+                    <span className="break-all font-mono text-[11px]">
+                      {mx.exchange}
+                    </span>
+                                </td>
+                                <td className="px-3 py-2 align-top text-right">
+                                    <Button
+                                        type="button"
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-7 w-7"
+                                        onClick={() => onCopy(value)}
+                                    >
+                                        <Copy className="h-3 w-3" />
+                                        <span className="sr-only">Copy record</span>
+                                    </Button>
+                                </td>
+                            </tr>
+                        )
+                    })}
+                    </tbody>
+                </table>
+                {copiedNode}
+            </ScrollArea>
+        </div>
     )
 }
 
 type SoaViewProps = {
+    title: string
     soa: {
         primary: string
         admin: string
@@ -372,11 +421,14 @@ type SoaViewProps = {
     copied?: boolean
 }
 
-function SoaView({ soa, emptyLabel, onCopy, copied }: SoaViewProps) {
+function SoaView({ title, soa, emptyLabel, onCopy, copied }: SoaViewProps) {
     if (!soa) {
         return (
-            <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-                {emptyLabel}
+            <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">{title}</p>
+                <div className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                    {emptyLabel}
+                </div>
             </div>
         )
     }
@@ -386,14 +438,12 @@ function SoaView({ soa, emptyLabel, onCopy, copied }: SoaViewProps) {
     return (
         <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-                <p className="text-xs text-muted-foreground">
-                    Start of Authority (SOA) record
-                </p>
+                <p className="text-xs font-medium text-muted-foreground">{title}</p>
                 <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-7 px-2 text-xs"
+                    className="h-7 px-2 text-[11px]"
                     onClick={() => onCopy(asBindLine)}
                 >
                     <Copy className="mr-1 h-3 w-3" />
@@ -405,43 +455,47 @@ function SoaView({ soa, emptyLabel, onCopy, copied }: SoaViewProps) {
                     <div className="text-[11px] font-medium uppercase text-muted-foreground">
                         Primary
                     </div>
-                    <div className="mt-1 break-all font-mono">{soa.primary}</div>
+                    <div className="mt-1 break-all font-mono text-[11px]">
+                        {soa.primary}
+                    </div>
                 </div>
                 <div className="rounded-md border px-3 py-2">
                     <div className="text-[11px] font-medium uppercase text-muted-foreground">
                         Admin
                     </div>
-                    <div className="mt-1 break-all font-mono">{soa.admin}</div>
+                    <div className="mt-1 break-all font-mono text-[11px]">
+                        {soa.admin}
+                    </div>
                 </div>
                 <div className="rounded-md border px-3 py-2">
                     <div className="text-[11px] font-medium uppercase text-muted-foreground">
                         Serial
                     </div>
-                    <div className="mt-1 font-mono">{soa.serial}</div>
+                    <div className="mt-1 font-mono text-[11px]">{soa.serial}</div>
                 </div>
                 <div className="rounded-md border px-3 py-2">
                     <div className="text-[11px] font-medium uppercase text-muted-foreground">
                         Refresh
                     </div>
-                    <div className="mt-1 font-mono">{soa.refresh}</div>
+                    <div className="mt-1 font-mono text-[11px]">{soa.refresh}</div>
                 </div>
                 <div className="rounded-md border px-3 py-2">
                     <div className="text-[11px] font-medium uppercase text-muted-foreground">
                         Retry
                     </div>
-                    <div className="mt-1 font-mono">{soa.retry}</div>
+                    <div className="mt-1 font-mono text-[11px]">{soa.retry}</div>
                 </div>
                 <div className="rounded-md border px-3 py-2">
                     <div className="text-[11px] font-medium uppercase text-muted-foreground">
                         Expire
                     </div>
-                    <div className="mt-1 font-mono">{soa.expire}</div>
+                    <div className="mt-1 font-mono text-[11px]">{soa.expire}</div>
                 </div>
                 <div className="rounded-md border px-3 py-2 md:col-span-2">
                     <div className="text-[11px] font-medium uppercase text-muted-foreground">
                         Minimum
                     </div>
-                    <div className="mt-1 font-mono">{soa.minimum}</div>
+                    <div className="mt-1 font-mono text-[11px]">{soa.minimum}</div>
                 </div>
             </div>
         </div>
