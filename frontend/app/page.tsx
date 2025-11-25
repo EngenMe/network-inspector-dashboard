@@ -74,7 +74,7 @@ export default function Page() {
                                 id="target"
                                 aria-label="Domain or hostname"
                                 aria-invalid={showError}
-                                placeholder="example.com or 1.1.1.1"
+                                placeholder="example.com"
                                 value={target}
                                 autoComplete="off"
                                 inputMode="url"
