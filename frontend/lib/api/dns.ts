@@ -59,6 +59,13 @@ export const fetchDns = async (
             signal: options.signal,
         })
     } catch (error) {
+        if (
+            error instanceof DOMException &&
+            error.name === 'AbortError'
+        ) {
+            throw error
+        }
+
         throw new ApiError({
             status: 0,
             code: 'NETWORK_ERROR',
@@ -95,3 +102,4 @@ export const fetchDns = async (
 
     return body as DnsLookupResult
 }
+
