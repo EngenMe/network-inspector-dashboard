@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useLayoutEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -25,52 +25,95 @@ export function DockerNetworkMap({ networks, containers }: DockerNetworkMapProps
         const map: Record<string, DockerContainer[]> = {};
         networks.forEach((n) => (map[n.name] = []));
         containers.forEach((c) => {
-            c.networks.forEach((net) => {
-                if (!map[net]) map[net] = [];
-                map[net].push(c);
-            });
+            if (c.networks.length > 0) {
+                const primary = c.networks[0];
+                if (!map[primary]) map[primary] = [];
+                map[primary].push(c);
+            }
         });
         return map;
     }, [networks, containers]);
 
-    return (
-        <Card className="p-4">
-            <div className="mb-3 text-sm font-medium">Docker Network Map</div>
+    const networkRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const containerRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const [edges, setEdges] = useState<
+        { id: string; from: { x: number; y: number }; to: { x: number; y: number } }[]
+    >([]);
 
-            <div className="mb-4 text-xs text-muted-foreground">
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1">
-                        <span className="h-2 w-2 rounded-full bg-green-500" />
-                        <span>Running</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <span className="h-2 w-2 rounded-full bg-red-500" />
-                        <span>Stopped</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <span className="h-2 w-2 rounded-full bg-blue-500" />
-                        <span>Bridge</span>
-                    </div>
-                </div>
-            </div>
+    useLayoutEffect(() => {
+        const newEdges: typeof edges = [];
+
+        containers.forEach((container) => {
+            container.networks.forEach((networkName) => {
+                const cRef = containerRefs.current[container.id];
+                const nRef = networkRefs.current[networkName];
+                if (!cRef || !nRef) return;
+
+                const cRect = cRef.getBoundingClientRect();
+                const nRect = nRef.getBoundingClientRect();
+
+                newEdges.push({
+                    id: `${container.id}-${networkName}`,
+                    from: {
+                        x: cRect.left + cRect.width / 2,
+                        y: cRect.top + cRect.height / 2,
+                    },
+                    to: {
+                        x: nRect.left + nRect.width / 2,
+                        y: nRect.top + nRect.height / 2,
+                    },
+                });
+            });
+        });
+
+        setEdges(newEdges);
+    }, [containers, networks]);
+
+    return (
+        <Card className="relative p-4">
+            <svg className="pointer-events-none absolute left-0 top-0 h-full w-full">
+                {edges.map((edge) => (
+                    <line
+                        key={edge.id}
+                        x1={edge.from.x}
+                        y1={edge.from.y}
+                        x2={edge.to.x}
+                        y2={edge.to.y}
+                        stroke="rgba(100, 100, 100, 0.4)"
+                        strokeWidth="1.5"
+                        className="hidden md:block"
+                    />
+                ))}
+            </svg>
+
+            <div className="mb-3 text-sm font-medium">Docker Network Map</div>
 
             <ScrollArea className="max-h-96 pr-3">
                 <div className="space-y-6">
                     {networks.map((network) => (
                         <div key={network.name}>
-                            <div className="mb-2 flex items-center gap-2">
-                                <span className="font-semibold">{network.name}</span>
+                            <div
+                                ref={(el) => (networkRefs.current[network.name] = el)}
+                                className="mb-2 flex items-center gap-2"
+                            >
+                <span className="font-semibold cursor-pointer">
+                  {network.name}
+                </span>
                                 <span className="rounded bg-blue-500/20 px-2 py-0.5 text-xs text-blue-600">
                   {network.driver}
                 </span>
-                                <span className="text-xs text-muted-foreground">{network.subnet}</span>
+                                <span className="text-xs text-muted-foreground">
+                  {network.subnet}
+                </span>
                             </div>
 
                             <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
                                 {grouped[network.name]?.map((container) => (
                                     <div
                                         key={container.id}
-                                        className="rounded border p-2 text-xs"
+                                        ref={(el) => (containerRefs.current[container.id] = el)}
+                                        onClick={() => console.log("Clicked:", container.id)}
+                                        className="cursor-pointer rounded border p-2 text-xs hover:bg-accent"
                                     >
                                         <div className="mb-1 flex items-center justify-between">
                                             <span>{container.name}</span>
