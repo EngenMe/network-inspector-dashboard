@@ -63,7 +63,7 @@ export function DockerNetworkMap({
                 newEdges.push({
                     id: `${container.id}-${networkName}`,
                     from: {
-                        x: cRect.left + cRect.width /2,
+                        x: cRect.left + cRect.width / 2,
                         y: cRect.top + cRect.height / 2,
                     },
                     to: {
@@ -74,7 +74,7 @@ export function DockerNetworkMap({
             });
         });
 
-        setEdges(newEdges);
+        requestAnimationFrame(() => setEdges(newEdges));
     }, [containers, networks]);
 
     if (loading) {

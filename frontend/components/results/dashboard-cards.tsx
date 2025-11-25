@@ -9,6 +9,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import DockerNetworkMap from "@/components/docker/docker-network-map"
+import type { DockerNetwork, DockerContainer } from "@/components/docker/docker-network-map"
 
 type Status = 'idle' | 'loading' | 'ready'
 
@@ -145,8 +146,8 @@ export function DockerNetworkCard({
                                   }: {
     status?: Status
     className?: string
-    networks?: any[]
-    containers?: any[]
+    networks?: DockerNetwork[]
+    containers?: DockerContainer[]
     error?: string
 }) {
     return (
