@@ -18,18 +18,26 @@ export interface DockerContainer {
 export interface DockerNetworkMapProps {
     networks: DockerNetwork[];
     containers: DockerContainer[];
+    loading?: boolean;
+    error?: string;
 }
 
-export function DockerNetworkMap({ networks, containers }: DockerNetworkMapProps) {
+export function DockerNetworkMap({
+                                     networks,
+                                     containers,
+                                     loading = false,
+                                     error,
+                                 }: DockerNetworkMapProps) {
+    const [hoverNetwork, setHoverNetwork] = useState<string | null>(null);
+    const [hoverContainer, setHoverContainer] = useState<string | null>(null);
+
     const grouped = React.useMemo(() => {
         const map: Record<string, DockerContainer[]> = {};
         networks.forEach((n) => (map[n.name] = []));
         containers.forEach((c) => {
-            if (c.networks.length > 0) {
-                const primary = c.networks[0];
-                if (!map[primary]) map[primary] = [];
-                map[primary].push(c);
-            }
+            const primary = c.networks[0];
+            if (!map[primary]) map[primary] = [];
+            map[primary].push(c);
         });
         return map;
     }, [networks, containers]);
@@ -55,7 +63,7 @@ export function DockerNetworkMap({ networks, containers }: DockerNetworkMapProps
                 newEdges.push({
                     id: `${container.id}-${networkName}`,
                     from: {
-                        x: cRect.left + cRect.width / 2,
+                        x: cRect.left + cRect.width /2,
                         y: cRect.top + cRect.height / 2,
                     },
                     to: {
@@ -69,6 +77,32 @@ export function DockerNetworkMap({ networks, containers }: DockerNetworkMapProps
         setEdges(newEdges);
     }, [containers, networks]);
 
+    if (loading) {
+        return (
+            <Card className="p-4 text-sm text-muted-foreground">
+                Loading Docker network data…
+            </Card>
+        );
+    }
+
+    if (error) {
+        return (
+            <Card className="p-4">
+                <div className="mb-3 rounded bg-red-500/10 p-2 text-sm text-red-600">
+                    {error}
+                </div>
+            </Card>
+        );
+    }
+
+    if (networks.length === 0 || containers.length === 0) {
+        return (
+            <Card className="p-4 text-sm text-muted-foreground">
+                No Docker networks or containers found.
+            </Card>
+        );
+    }
+
     return (
         <Card className="relative p-4">
             <svg className="pointer-events-none absolute left-0 top-0 h-full w-full">
@@ -79,14 +113,16 @@ export function DockerNetworkMap({ networks, containers }: DockerNetworkMapProps
                         y1={edge.from.y}
                         x2={edge.to.x}
                         y2={edge.to.y}
-                        stroke="rgba(100, 100, 100, 0.4)"
-                        strokeWidth="1.5"
+                        stroke={
+                            hoverNetwork && edge.id.includes(hoverNetwork)
+                                ? "rgba(0,150,255,0.7)"
+                                : "rgba(100,100,100,0.35)"
+                        }
+                        strokeWidth={hoverNetwork ? 2 : 1.5}
                         className="hidden md:block"
                     />
                 ))}
             </svg>
-
-            <div className="mb-3 text-sm font-medium">Docker Network Map</div>
 
             <ScrollArea className="max-h-96 pr-3">
                 <div className="space-y-6">
@@ -94,26 +130,31 @@ export function DockerNetworkMap({ networks, containers }: DockerNetworkMapProps
                         <div key={network.name}>
                             <div
                                 ref={(el) => (networkRefs.current[network.name] = el)}
-                                className="mb-2 flex items-center gap-2"
+                                onMouseEnter={() => setHoverNetwork(network.name)}
+                                onMouseLeave={() => setHoverNetwork(null)}
+                                className="mb-2 flex cursor-pointer items-center gap-2"
                             >
-                <span className="font-semibold cursor-pointer">
-                  {network.name}
-                </span>
+                                <span className="font-semibold">{network.name}</span>
                                 <span className="rounded bg-blue-500/20 px-2 py-0.5 text-xs text-blue-600">
                   {network.driver}
-                </span>
-                                <span className="text-xs text-muted-foreground">
-                  {network.subnet}
                 </span>
                             </div>
 
                             <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
-                                {grouped[network.name]?.map((container) => (
+                                {grouped[network.name].map((container) => (
                                     <div
                                         key={container.id}
                                         ref={(el) => (containerRefs.current[container.id] = el)}
-                                        onClick={() => console.log("Clicked:", container.id)}
-                                        className="cursor-pointer rounded border p-2 text-xs hover:bg-accent"
+                                        onMouseEnter={() => setHoverContainer(container.id)}
+                                        onMouseLeave={() => setHoverContainer(null)}
+                                        className={`rounded border p-2 text-xs cursor-pointer relative ${
+                                            hoverContainer === container.id
+                                                ? "bg-accent"
+                                                : hoverNetwork &&
+                                                container.networks.includes(hoverNetwork)
+                                                    ? "bg-blue-500/10"
+                                                    : ""
+                                        }`}
                                     >
                                         <div className="mb-1 flex items-center justify-between">
                                             <span>{container.name}</span>
@@ -128,15 +169,11 @@ export function DockerNetworkMap({ networks, containers }: DockerNetworkMapProps
                                         <div className="text-[10px] text-muted-foreground">
                                             {container.id.slice(0, 12)}
                                         </div>
+                                        <div className="absolute left-1/2 top-0 mt-[-1.2rem] -translate-x-1/2 rounded bg-black px-2 py-1 text-[10px] text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 md:group-hover:opacity-100">
+                                            {container.networks.join(", ")}
+                                        </div>
                                     </div>
                                 ))}
-
-                                {(!grouped[network.name] ||
-                                    grouped[network.name].length === 0) && (
-                                    <div className="text-xs text-muted-foreground">
-                                        No containers attached.
-                                    </div>
-                                )}
                             </div>
                         </div>
                     ))}
