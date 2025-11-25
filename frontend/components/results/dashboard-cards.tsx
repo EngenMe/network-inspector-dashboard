@@ -5,6 +5,9 @@ import type { PingResult } from '@/lib/types/ping'
 import type { TracerouteResult } from '@/lib/types/traceroute'
 import type { TlsInspectorResult } from '@/lib/types/tls'
 import type { HttpInspectorResult } from '@/lib/types/http'
+import type { MtuResult } from '@/lib/types/mtu'
+import { ScrollArea } from '@/components/ui/scroll-area'
+
 
 type Status = 'idle' | 'loading' | 'ready'
 
@@ -135,23 +138,45 @@ interface PingCardProps extends BaseCardProps {
     error?: string | null
 }
 
+type PingStatsLike = {
+    avgRttMs?: number
+    avg?: number
+    packetLoss?: number
+    loss?: number
+    transmitted?: number
+    received?: number
+    packetsTransmitted?: number
+    packetsReceived?: number
+}
+
+const getPingStats = (ping?: PingResult | null): PingStatsLike => {
+    if (!ping) return {}
+
+    const maybeWithStats = ping as { stats?: unknown }
+    if (maybeWithStats.stats && typeof maybeWithStats.stats === 'object') {
+        return maybeWithStats.stats as PingStatsLike
+    }
+
+    return ping as unknown as PingStatsLike
+}
+
 export function PingCard({ status, ping, error, className }: PingCardProps) {
-    const stats = ping?.stats ?? (ping as any) ?? {}
+    const stats = getPingStats(ping)
     const avg =
-        typeof stats?.avgRttMs === 'number'
+        typeof stats.avgRttMs === 'number'
             ? stats.avgRttMs
-            : typeof stats?.avg === 'number'
+            : typeof stats.avg === 'number'
                 ? stats.avg
                 : undefined
     const loss =
-        typeof stats?.packetLoss === 'number'
+        typeof stats.packetLoss === 'number'
             ? stats.packetLoss
-            : typeof stats?.loss === 'number'
+            : typeof stats.loss === 'number'
                 ? stats.loss
                 : undefined
 
-    const transmitted = stats?.transmitted ?? stats?.packetsTransmitted
-    const received = stats?.received ?? stats?.packetsReceived
+    const transmitted = stats.transmitted ?? stats.packetsTransmitted
+    const received = stats.received ?? stats.packetsReceived
 
     return (
         <Card className={cn(className)}>
@@ -331,8 +356,10 @@ interface TLSCardProps extends BaseCardProps {
     error?: string | null
 }
 
+const TLS_NOW = Date.now()
+
 export function TLSCard({ status, tls, error, className }: TLSCardProps) {
-    const now = Date.now()
+    const now = TLS_NOW
     const notBefore = tls?.validFrom ? Date.parse(tls.validFrom) : NaN
     const notAfter = tls?.validTo ? Date.parse(tls.validTo) : NaN
 
@@ -513,20 +540,28 @@ interface HttpCardProps extends BaseCardProps {
     error?: string | null
 }
 
+interface HttpHeaderEntry {
+    name: string
+    value: string
+}
+
 export function HttpCard({ status, http, error, className }: HttpCardProps) {
-    const rawHeaders = (http as any)?.headers ?? []
-    const headers =
+    const rawHeaders = http && (http as { headers?: unknown }).headers
+
+    const headers: HttpHeaderEntry[] =
         Array.isArray(rawHeaders)
-            ? rawHeaders
+            ? (rawHeaders as HttpHeaderEntry[])
             : rawHeaders && typeof rawHeaders === 'object'
-                ? Object.entries(rawHeaders).map(([name, value]) => ({
-                    name,
-                    value: String(value),
-                }))
+                ? Object.entries(rawHeaders as Record<string, unknown>).map(
+                    ([name, value]) => ({
+                        name,
+                        value: String(value),
+                    }),
+                )
                 : []
 
     const redirects = Array.isArray(http?.redirectChain)
-        ? http!.redirectChain!
+        ? http.redirectChain
         : []
 
     const hasRedirects = redirects.length > 0
@@ -653,22 +688,135 @@ export function HttpCard({ status, http, error, className }: HttpCardProps) {
 
 // ─────────────────────── MTU / MSS ───────────────────────
 
-export function MTUMSSCard({ status, className }: BaseCardProps) {
+interface MTUMSSCardProps extends BaseCardProps {
+    mtu?: MtuResult | null
+    error?: string | null
+}
+
+export function MTUMSSCard({
+                               status,
+                               mtu,
+                               error,
+                               className,
+                           }: MTUMSSCardProps) {
+    const probes = Array.isArray(mtu?.probes) ? mtu!.probes! : []
+
     return (
         <Card className={cn(className)}>
             <CardHeader>
                 <CardTitle>MTU / MSS</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
+            <CardContent className="space-y-3 text-sm">
                 <p className="text-xs text-muted-foreground">
                     MTU and MSS behavior across the path will be summarized here.
                 </p>
+
                 {status === 'loading' && (
                     <p className="text-xs text-muted-foreground">
-                        Probing path MTU and MSS…
+                        Running path MTU discovery and MSS probes…
                     </p>
                 )}
-                {status === 'ready' && (
+
+                {status === 'ready' && error && !mtu && (
+                    <p className="text-xs font-medium text-destructive" role="alert">
+                        {error}
+                    </p>
+                )}
+
+                {status === 'ready' && mtu && (
+                    <div className="space-y-3 text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="space-y-0.5">
+                                <p className="font-mono text-[11px] text-muted-foreground">
+                                    Target
+                                </p>
+                                <p className="font-mono text-[11px]">
+                                    {mtu.target ?? 'unknown'}
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                <div className="rounded border bg-muted/60 px-2 py-1 text-[11px] font-mono">
+                                    MTU:{' '}
+                                    {mtu.mtu != null ? (
+                                        <span className="font-semibold">{mtu.mtu}</span>
+                                    ) : (
+                                        'n/a'
+                                    )}
+                                </div>
+                                <div className="rounded border bg-muted/60 px-2 py-1 text-[11px] font-mono">
+                                    MSS:{' '}
+                                    {mtu.mss != null ? (
+                                        <span className="font-semibold">{mtu.mss}</span>
+                                    ) : (
+                                        'n/a'
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {probes.length > 0 && (
+                            <div className="space-y-1">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Probe sizes
+                                </p>
+                                <ScrollArea className="h-40 rounded-md border">
+                                    <table className="w-full border-collapse text-[11px]">
+                                        <thead className="bg-muted/60">
+                                        <tr>
+                                            <th className="px-2 py-1 text-left font-medium">
+                                                Size (bytes)
+                                            </th>
+                                            <th className="px-2 py-1 text-left font-medium">
+                                                Result
+                                            </th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        {probes.map((p, i) => (
+                                            <tr
+                                                key={`${p.size}-${i}`}
+                                                className="border-t"
+                                            >
+                                                <td className="px-2 py-1 font-mono">{p.size}</td>
+                                                <td className="px-2 py-1">
+                                                    {p.success ? (
+                                                        <span className="font-mono text-emerald-500 dark:text-emerald-400">
+                                ok
+                              </span>
+                                                    ) : (
+                                                        <span className="font-mono text-destructive">
+                                fail
+                              </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        </tbody>
+                                    </table>
+                                </ScrollArea>
+                            </div>
+                        )}
+
+                        {mtu.raw && (
+                            <div className="space-y-1">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Raw output
+                                </p>
+                                <ScrollArea className="h-24 rounded-md border bg-muted/40 p-2">
+                  <pre className="whitespace-pre-wrap break-all font-mono text-[11px]">
+                    {mtu.raw}
+                  </pre>
+                                </ScrollArea>
+                            </div>
+                        )}
+
+                        <p className="text-[11px] font-mono text-emerald-500 dark:text-emerald-400">
+                            LIVE · MTU/MSS measurements from backend
+                        </p>
+                    </div>
+                )}
+
+                {status === 'ready' && !mtu && !error && (
                     <p className="text-xs text-muted-foreground">
                         MTU / MSS tests are not connected yet. They will populate this card
                         later.

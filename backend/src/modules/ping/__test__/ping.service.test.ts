@@ -1,28 +1,38 @@
-import { describe, test, expect, vi } from "vitest";
+import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { PingService } from "../ping.service";
-import * as execUtil from "../../../utils/exec";
+
+const service = new PingService();
+
+const originalFetch = globalThis.fetch;
+const originalPerformance = globalThis.performance;
+
+beforeEach(() => {
+    vi.restoreAllMocks();
+});
+
+afterEach(() => {
+    (globalThis as any).fetch = originalFetch;
+    (globalThis as any).performance = originalPerformance;
+});
 
 describe("PingService", () => {
-    const service = new PingService();
-
     test("should parse valid ping output", async () => {
-        vi.spyOn(execUtil, "execAsync").mockResolvedValue({
-            stdout: `
-        64 bytes from 8.8.8.8: time=23.1 ms
-        64 bytes from 8.8.8.8: time=24.5 ms
+        const times = [0, 23.1, 23.1, 47.6];
+        let i = 0;
 
-        --- 8.8.8.8 ping statistics ---
-        2 packets transmitted, 2 received, 0% packet loss
-        rtt min/avg/max/stddev = 23.1/23.8/24.5/0.7 ms
-      `,
-            stderr: "",
-        } as any);
+        (globalThis as any).performance = {
+            now: () => times[i++],
+        } as any;
 
-        const result = await service.run({ target: "8.8.8.8" });
+        (globalThis as any).fetch = vi.fn().mockResolvedValue({} as any);
+
+        const result = await service.run({ target: "8.8.8.8", count: 2 });
 
         expect(result.latencies).toEqual([23.1, 24.5]);
-        expect(result.avg).toBe(23.8);
+        expect(result.avg).toBeCloseTo(23.8, 1);
         expect(result.packetLoss).toBe(0);
+        expect(result.transmitted).toBe(2);
+        expect(result.received).toBe(2);
     });
 
     test("should return empty data on no response", () => {
@@ -43,8 +53,19 @@ describe("PingService", () => {
     });
 
     test("should handle invalid domain execution error", async () => {
-        vi.spyOn(execUtil, "execAsync").mockRejectedValue(new Error("unknown host"));
+        (globalThis as any).performance = {
+            now: () => 0,
+        } as any;
 
-        await expect(service.run({ target: "invalid.local" })).rejects.toThrow();
+        (globalThis as any).fetch = vi
+            .fn()
+            .mockRejectedValue(new Error("unknown host"));
+
+        const result = await service.run({ target: "invalid.local", count: 4 });
+
+        expect(result.received).toBe(0);
+        expect(result.transmitted).toBe(4);
+        expect(result.packetLoss).toBe(100);
+        expect(result.latencies).toEqual([]);
     });
 });

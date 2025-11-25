@@ -7,19 +7,20 @@ vi.mock('../../../utils/exec', () => ({
     execAsync: vi.fn(),
 }));
 
-describe('Traceroute Route', () => {
-    const buildApp = async () => {
-        const app = Fastify();
-        await app.register(tracerouteRoute);
-        return app;
-    };
+const buildApp = async () => {
+    const app = Fastify();
+    app.register(tracerouteRoute, { prefix: '/api' });
+    await app.ready();
+    return app;
+};
 
+describe('Traceroute Route', () => {
     it('should return traceroute result successfully', async () => {
         (execAsync as any).mockResolvedValue({
             stdout: `
       traceroute to example.com
       1  1.1.1.1  10 ms  11 ms  12 ms
-      `
+      `,
         });
 
         const app = await buildApp();

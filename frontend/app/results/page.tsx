@@ -21,6 +21,8 @@ import { fetchTls, TlsApiError } from '@/lib/api/tls'
 import type { TlsInspectorResult } from '@/lib/types/tls'
 import { fetchHttpInfo, HttpApiError } from '@/lib/api/http'
 import type { HttpInspectorResult } from '@/lib/types/http'
+import { fetchMtu, MtuApiError } from '@/lib/api/mtu'
+import type { MtuResult } from '@/lib/types/mtu'
 
 type ScanStatus = 'idle' | 'loading' | 'ready'
 
@@ -28,6 +30,70 @@ interface DockerNetworkSummary {
     networks: { name: string; driver?: string; subnet?: string }[]
     containers: { id: string; name: string; status: string; networks: string[] }[]
     error: string | null
+}
+
+interface DockerTopologyNode {
+    id: string
+    name?: string
+    type: string
+}
+
+interface DockerTopologyLink {
+    sourceId: string
+    targetId: string
+}
+
+interface DockerTopologyPayload {
+    nodes?: DockerTopologyNode[]
+    links?: DockerTopologyLink[]
+    error?: string | null
+}
+
+interface PingStats {
+    avg?: number
+    packetLoss?: number
+}
+
+function mapDockerTopology(body?: DockerTopologyPayload | null): DockerNetworkSummary {
+    const nodes: DockerTopologyNode[] = Array.isArray(body?.nodes)
+        ? (body?.nodes as DockerTopologyNode[])
+        : []
+
+    const links: DockerTopologyLink[] = Array.isArray(body?.links)
+        ? (body?.links as DockerTopologyLink[])
+        : []
+
+    const networkNodes = nodes.filter(n => n && n.type === 'network')
+    const containerNodes = nodes.filter(n => n && n.type === 'container')
+
+    const networks = networkNodes.map(n => ({
+        name: String(n.name ?? n.id ?? 'unknown'),
+        driver: 'bridge',
+        subnet: undefined,
+    }))
+
+    const containers = containerNodes.map(c => {
+        const attachedLinks = links.filter(l => l && l.sourceId === c.id)
+        const attachedNetworkNames = attachedLinks
+            .map(l => {
+                const net = networkNodes.find(n => n.id === l.targetId)
+                return net?.name ?? l.targetId
+            })
+            .filter(Boolean) as string[]
+
+        return {
+            id: String(c.id ?? c.name ?? 'unknown'),
+            name: String(c.name ?? c.id ?? 'container'),
+            status: 'attached',
+            networks: attachedNetworkNames,
+        }
+    })
+
+    return {
+        networks,
+        containers,
+        error: body?.error ?? null,
+    }
 }
 
 const backendPort =
@@ -61,43 +127,40 @@ export default function ResultsPage() {
     const [httpResult, setHttpResult] = useState<HttpInspectorResult | null>(null)
     const [httpError, setHttpError] = useState<string | null>(null)
 
-    const [dockerData, setDockerData] = useState<DockerNetworkSummary | null>(
-        null,
-    )
+    const [mtuResult, setMtuResult] = useState<MtuResult | null>(null)
+    const [mtuError, setMtuError] = useState<string | null>(null)
+
+    const [dockerData, setDockerData] = useState<DockerNetworkSummary | null>(null)
     const [dockerError, setDockerError] = useState<string | null>(null)
 
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         if (!target) {
-            setScanStatus('idle')
-            setDnsResult(null)
-            setDnsError(null)
-            setPingResult(null)
-            setPingError(null)
-            setTracerouteResult(null)
-            setTracerouteError(null)
-            setTlsResult(null)
-            setTlsError(null)
-            setHttpResult(null)
-            setHttpError(null)
-            setDockerData(null)
-            setDockerError(null)
-            setLastUpdated(null)
             return
         }
 
         let cancelled = false
+
         setScanStatus('loading')
         setDnsError(null)
         setPingError(null)
         setTracerouteError(null)
         setTlsError(null)
         setHttpError(null)
+        setMtuError(null)
         setDockerError(null)
+
+        const markUpdated = () => {
+            if (!cancelled) {
+                setLastUpdated(new Date().toISOString())
+            }
+        }
 
         const dnsPromise = fetchDns(target)
             .then(res => {
                 if (cancelled) return
                 setDnsResult(res)
+                markUpdated()
             })
             .catch(err => {
                 if (cancelled) return
@@ -106,12 +169,14 @@ export default function ResultsPage() {
                 } else {
                     setDnsError('DNS lookup failed')
                 }
+                markUpdated()
             })
 
         const pingPromise = fetchPing(target)
             .then(res => {
                 if (cancelled) return
                 setPingResult(res)
+                markUpdated()
             })
             .catch(err => {
                 if (cancelled) return
@@ -120,12 +185,14 @@ export default function ResultsPage() {
                 } else {
                     setPingError('Ping failed')
                 }
+                markUpdated()
             })
 
         const traceroutePromise = fetchTraceroute(target)
             .then(res => {
                 if (cancelled) return
                 setTracerouteResult(res)
+                markUpdated()
             })
             .catch(err => {
                 if (cancelled) return
@@ -134,12 +201,14 @@ export default function ResultsPage() {
                 } else {
                     setTracerouteError('Traceroute failed')
                 }
+                markUpdated()
             })
 
         const tlsPromise = fetchTls(target)
             .then(res => {
                 if (cancelled) return
                 setTlsResult(res)
+                markUpdated()
             })
             .catch(err => {
                 if (cancelled) return
@@ -148,12 +217,16 @@ export default function ResultsPage() {
                 } else {
                     setTlsError('TLS inspection failed')
                 }
+                markUpdated()
             })
 
-        const httpPromise = fetchHttpInfo(target.startsWith('http') ? target : `https://${target}`)
+        const httpPromise = fetchHttpInfo(
+            target.startsWith('http') ? target : `https://${target}`,
+        )
             .then(res => {
                 if (cancelled) return
                 setHttpResult(res)
+                markUpdated()
             })
             .catch(err => {
                 if (cancelled) return
@@ -162,6 +235,23 @@ export default function ResultsPage() {
                 } else {
                     setHttpError('HTTP inspection failed')
                 }
+                markUpdated()
+            })
+
+        const mtuPromise = fetchMtu(target)
+            .then(res => {
+                if (cancelled) return
+                setMtuResult(res)
+                markUpdated()
+            })
+            .catch(err => {
+                if (cancelled) return
+                if (err instanceof MtuApiError) {
+                    setMtuError(err.message)
+                } else {
+                    setMtuError('MTU/MSS test failed')
+                }
+                markUpdated()
             })
 
         const dockerPromise = fetch(`${defaultBaseUrl}/api/docker/network`)
@@ -169,45 +259,69 @@ export default function ResultsPage() {
                 if (!res.ok) {
                     throw new Error(`Docker network error: ${res.status}`)
                 }
-                return res.json()
+                return res.json() as Promise<DockerTopologyPayload>
             })
-            .then((body: any) => {
+            .then(body => {
                 if (cancelled) return
-                setDockerData({
-                    networks: body.networks ?? [],
-                    containers: body.containers ?? [],
-                    error: body.error ?? null,
-                })
+                const summary = mapDockerTopology(body)
+                setDockerData(summary)
             })
             .catch(err => {
                 if (cancelled) return
-                setDockerError(err.message ?? 'Docker network error')
-                if (!dockerData) {
-                    setDockerData({
-                        networks: [],
-                        containers: [],
-                        error: err.message ?? 'Docker network error',
-                    })
-                }
+                const message =
+                    err instanceof Error ? err.message : 'Docker network error'
+                setDockerError(message)
+                setDockerData(prev =>
+                        prev ?? {
+                            networks: [],
+                            containers: [],
+                            error: message,
+                        },
+                )
             })
 
+        // Global status is only about "all modules finished"
         Promise.allSettled([
             dnsPromise,
             pingPromise,
             traceroutePromise,
             tlsPromise,
             httpPromise,
+            mtuPromise,
             dockerPromise,
         ]).then(() => {
             if (cancelled) return
             setScanStatus('ready')
-            setLastUpdated(new Date().toISOString())
         })
 
         return () => {
             cancelled = true
         }
     }, [target])
+
+    // Per-module status: as soon as that module has data OR error, it's "ready"
+    const moduleStatus = (
+        result: unknown | null,
+        error: string | null,
+    ): ScanStatus => {
+        if (!target) return 'idle'
+        if (result || error) return 'ready'
+        return scanStatus
+    }
+
+    const dnsStatus = moduleStatus(target ? dnsResult : null, target ? dnsError : null)
+    const pingStatus = moduleStatus(target ? pingResult : null, target ? pingError : null)
+    const tracerouteStatus = moduleStatus(
+        target ? tracerouteResult : null,
+        target ? tracerouteError : null,
+    )
+    const tlsStatus = moduleStatus(target ? tlsResult : null, target ? tlsError : null)
+    const httpStatus = moduleStatus(target ? httpResult : null, target ? httpError : null)
+    const mtuStatus = moduleStatus(target ? mtuResult : null, target ? mtuError : null)
+    const dockerStatus = moduleStatus(
+        target ? dockerData : null,
+        target ? dockerError : null,
+    )
 
     const effectiveStatus: ScanStatus = target ? scanStatus : 'ready'
     const showDashboard = effectiveStatus !== 'idle'
@@ -247,7 +361,7 @@ export default function ResultsPage() {
                             <>
                                 Aggregated network diagnostics for{' '}
                                 <span className="font-mono text-xs">{target}</span>. Modules
-                                will populate as they are wired to the backend.
+                                resolve independently as they complete.
                             </>
                         ) : (
                             'Aggregated network diagnostics. Start a scan from the home page to see results for a specific target.'
@@ -300,10 +414,12 @@ export default function ResultsPage() {
                                 <span className="text-destructive">error</span>
                             ) : pingResult ? (
                                 (() => {
-                                    const stats = pingResult as any
+                                    const stats = pingResult as PingStats
                                     const avg = typeof stats.avg === 'number' ? stats.avg : null
                                     const loss =
-                                        typeof stats.packetLoss === 'number' ? stats.packetLoss : null
+                                        typeof stats.packetLoss === 'number'
+                                            ? stats.packetLoss
+                                            : null
                                     if (avg == null && loss == null) return 'received'
                                     const parts: string[] = []
                                     if (avg != null) parts.push(`${avg.toFixed(1)} ms avg`)
@@ -345,9 +461,25 @@ export default function ResultsPage() {
                             {httpError ? (
                                 <span className="text-destructive">error</span>
                             ) : httpResult ? (
-                                `${httpResult.statusCode} ${
-                                    httpResult.statusText ?? ''
-                                }`.trim()
+                                `${httpResult.statusCode} ${httpResult.statusText ?? ''}`.trim()
+                            ) : (
+                                'pending…'
+                            )}
+                        </div>
+                        <div>
+                            <span className="font-mono">MTU/MSS</span>:{' '}
+                            {mtuError ? (
+                                <span className="text-destructive">error</span>
+                            ) : mtuResult ? (
+                                (() => {
+                                    const mtu = mtuResult.mtu
+                                    const mss = mtuResult.mss
+                                    if (mtu == null && mss == null) return 'measured'
+                                    const parts: string[] = []
+                                    if (mtu != null) parts.push(`MTU ${mtu}`)
+                                    if (mss != null) parts.push(`MSS ${mss}`)
+                                    return parts.join(', ')
+                                })()
                             ) : (
                                 'pending…'
                             )}
@@ -371,37 +503,21 @@ export default function ResultsPage() {
                     aria-label="Network diagnostics dashboard"
                     className="grid auto-rows-[1fr] gap-4 sm:grid-cols-2 xl:grid-cols-3"
                 >
-                    <DNSCard
-                        status={effectiveStatus}
-                        dns={dnsResult}
-                        error={dnsError}
-                    />
-                    <PingCard
-                        status={effectiveStatus}
-                        ping={pingResult}
-                        error={pingError}
-                    />
+                    <DNSCard status={dnsStatus} dns={target ? dnsResult : null} error={target ? dnsError : null} />
+                    <PingCard status={pingStatus} ping={target ? pingResult : null} error={target ? pingError : null} />
                     <TracerouteCard
-                        status={effectiveStatus}
-                        traceroute={tracerouteResult}
-                        error={tracerouteError}
+                        status={tracerouteStatus}
+                        traceroute={target ? tracerouteResult : null}
+                        error={target ? tracerouteError : null}
                     />
-                    <TLSCard
-                        status={effectiveStatus}
-                        tls={tlsResult}
-                        error={tlsError}
-                    />
-                    <HttpCard
-                        status={effectiveStatus}
-                        http={httpResult}
-                        error={httpError}
-                    />
-                    <MTUMSSCard status={effectiveStatus} />
+                    <TLSCard status={tlsStatus} tls={target ? tlsResult : null} error={target ? tlsError : null} />
+                    <HttpCard status={httpStatus} http={target ? httpResult : null} error={target ? httpError : null} />
+                    <MTUMSSCard status={mtuStatus} mtu={target ? mtuResult : null} error={target ? mtuError : null} />
                     <DockerNetworkCard
-                        status={effectiveStatus}
-                        networks={dockerData?.networks ?? []}
-                        containers={dockerData?.containers ?? []}
-                        error={dockerData?.error ?? dockerError ?? null}
+                        status={dockerStatus}
+                        networks={target && dockerData ? dockerData.networks : []}
+                        containers={target && dockerData ? dockerData.containers : []}
+                        error={target ? dockerData?.error ?? dockerError ?? null : null}
                         className="sm:col-span-2 xl:col-span-3"
                     />
                 </section>

@@ -7,7 +7,8 @@ describe("MTU Route", () => {
     const app = fastify();
 
     beforeAll(async () => {
-        await app.register(mtuRoute);
+        await app.register(mtuRoute, { prefix: "/api" });
+        await app.ready();
     });
 
     afterAll(async () => {

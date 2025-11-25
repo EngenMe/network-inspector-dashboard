@@ -13,6 +13,17 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 
+type DnsRecordObject = {
+    exchange?: string
+    host?: string
+    name?: string
+    priority?: number
+    [key: string]: unknown
+}
+
+type DnsRecordItem = string | DnsRecordObject
+
+
 export default function DnsPage() {
     const searchParams = useSearchParams()
     const router = useRouter()
@@ -266,7 +277,9 @@ export default function DnsPage() {
                                     {!showSkeleton && data && visibleEntries.length > 0 && (
                                         <div className="space-y-4">
                                             {visibleEntries.map(([type, values]) => {
-                                                const list = Array.isArray(values) ? values : []
+                                                const list: DnsRecordItem[] = Array.isArray(values)
+                                                    ? (values as DnsRecordItem[])
+                                                    : []
 
                                                 return (
                                                     <section
@@ -279,9 +292,8 @@ export default function DnsPage() {
                                                                 {type}
                                                             </h3>
                                                             <span className="text-[10px] font-mono text-muted-foreground">
-                                                                {list.length} record
-                                                                {list.length !== 1 ? 's' : ''}
-                                                            </span>
+                    {list.length} record{list.length !== 1 ? 's' : ''}
+                </span>
                                                         </div>
 
                                                         {list.length === 0 ? (
@@ -295,7 +307,7 @@ export default function DnsPage() {
                                                                     aria-label={`${type} entries`}
                                                                 >
                                                                     {list
-                                                                        .filter(item => {
+                                                                        .filter((item: DnsRecordItem) => {
                                                                             if (!filter.trim()) return true
                                                                             const f = filter.toLowerCase()
                                                                             const raw =
@@ -304,16 +316,16 @@ export default function DnsPage() {
                                                                                     : JSON.stringify(item)
                                                                             return raw.toLowerCase().includes(f)
                                                                         })
-                                                                        .map((item: any, i: number) => {
+                                                                        .map((item: DnsRecordItem, i: number) => {
                                                                             if (typeof item === 'string') {
                                                                                 return (
                                                                                     <li
                                                                                         key={`${type}-${i}`}
                                                                                         className="flex items-center justify-between gap-2 px-2 py-1.5"
                                                                                     >
-                                                                                        <span className="truncate font-mono">
-                                                                                            {item}
-                                                                                        </span>
+                                            <span className="truncate font-mono">
+                                                {item}
+                                            </span>
                                                                                     </li>
                                                                                 )
                                                                             }
@@ -324,7 +336,7 @@ export default function DnsPage() {
                                                                                 item.name ??
                                                                                 ''
                                                                             const meta =
-                                                                                'priority' in item
+                                                                                'priority' in item && typeof item.priority === 'number'
                                                                                     ? `prio: ${item.priority}`
                                                                                     : undefined
 
@@ -333,13 +345,13 @@ export default function DnsPage() {
                                                                                     key={`${type}-${i}`}
                                                                                     className="flex items-center justify-between gap-2 px-2 py-1.5"
                                                                                 >
-                                                                                    <span className="truncate font-mono">
-                                                                                        {label || JSON.stringify(item)}
-                                                                                    </span>
+                                        <span className="truncate font-mono">
+                                            {label || JSON.stringify(item)}
+                                        </span>
                                                                                     {meta && (
                                                                                         <span className="text-[10px] font-mono text-muted-foreground">
-                                                                                            {meta}
-                                                                                        </span>
+                                                {meta}
+                                            </span>
                                                                                     )}
                                                                                 </li>
                                                                             )

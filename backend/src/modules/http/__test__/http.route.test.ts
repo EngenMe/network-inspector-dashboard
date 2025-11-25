@@ -4,7 +4,10 @@ import httpRoute from "../../../routes/http.route"
 
 const buildApp = async () => {
     const app = Fastify()
-    await httpRoute(app)
+
+    app.register(httpRoute, { prefix: "/api" })
+    await app.ready()
+
     return app
 }
 
