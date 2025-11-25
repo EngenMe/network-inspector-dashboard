@@ -60,17 +60,21 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
 
     if (isLoading) {
         return (
-            <Card className="w-full">
+            <Card
+                className="w-full"
+                aria-label="Loading DNS results"
+                aria-busy="true"
+            >
                 <CardHeader className="space-y-2">
                     <div className="flex items-center justify-between gap-2">
-                        <Skeleton className="h-5 w-20" />
-                        <Skeleton className="h-5 w-32" />
+                        <Skeleton className="h-5 w-20" aria-hidden="true" />
+                        <Skeleton className="h-5 w-32" aria-hidden="true" />
                     </div>
-                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-4 w-40" aria-hidden="true" />
                 </CardHeader>
                 <CardContent className="space-y-3">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-40 w-full" />
+                    <Skeleton className="h-8 w-full" aria-hidden="true" />
+                    <Skeleton className="h-40 w-full" aria-hidden="true" />
                 </CardContent>
             </Card>
         )
@@ -78,7 +82,10 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
 
     if (error) {
         return (
-            <Card className="w-full">
+            <Card
+                className="w-full"
+                aria-label="DNS lookup error"
+            >
                 <CardHeader>
                     <CardTitle>DNS</CardTitle>
                     <CardDescription className="font-mono text-xs">
@@ -86,11 +93,20 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                    <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    <div
+                        className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+                        role="alert"
+                    >
                         DNS lookup failed: {error}
                     </div>
                     {onRetry && (
-                        <Button size="sm" variant="outline" onClick={onRetry}>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            type="button"
+                            onClick={onRetry}
+                            aria-label="Retry DNS lookup"
+                        >
                             Retry lookup
                         </Button>
                     )}
@@ -101,7 +117,10 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
 
     if (!result) {
         return (
-            <Card className="w-full">
+            <Card
+                className="w-full"
+                aria-label="DNS card awaiting scan"
+            >
                 <CardHeader>
                     <CardTitle>DNS</CardTitle>
                     <CardDescription>Waiting for a scan…</CardDescription>
@@ -209,17 +228,35 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
         }
     }
 
+    const cardDescriptionId = `dns-card-description-${domain || 'unknown'}`
+    const tabsLabelId = `dns-tabs-label-${domain || 'unknown'}`
+
     return (
-        <Card className="w-full">
+        <Card
+            className="w-full"
+            aria-labelledby={tabsLabelId}
+            aria-describedby={cardDescriptionId}
+        >
             <CardHeader className="flex flex-row items-center justify-between gap-4">
                 <div className="space-y-1">
                     <CardTitle className="flex items-center gap-2">
-                        DNS
-                        <Badge variant="outline" className="font-mono text-[11px] font-normal">
+                        <span id={tabsLabelId}>DNS</span>
+                        <Badge
+                            variant="outline"
+                            className="font-mono text-[11px] font-normal"
+                            aria-label={
+                                domain
+                                    ? `DNS records for ${domain}`
+                                    : 'No domain selected'
+                            }
+                        >
                             {domain || '—'}
                         </Badge>
                     </CardTitle>
-                    <CardDescription className="text-[11px]">
+                    <CardDescription
+                        id={cardDescriptionId}
+                        className="text-[11px]"
+                    >
                         Last resolved:{' '}
                         {resolvedAt ? new Date(resolvedAt).toLocaleString() : 'unknown'}
                     </CardDescription>
@@ -227,7 +264,10 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
             </CardHeader>
             <CardContent>
                 <Tabs defaultValue={defaultTab} className="w-full">
-                    <TabsList className="flex flex-wrap justify-start gap-1">
+                    <TabsList
+                        className="flex flex-wrap justify-start gap-1"
+                        aria-label="DNS record types"
+                    >
                         {recordTypes.map(type => {
                             const count = countForType(type)
                             const isActive = activeTypes.includes(type)
@@ -237,6 +277,7 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
                                     value={type}
                                     disabled={!isActive && !count}
                                     className="flex items-center gap-1 text-xs"
+                                    aria-label={`${type} records (${count} found)`}
                                 >
                                     <span>{type}</span>
                                     <Badge
@@ -251,7 +292,12 @@ export function DnsCard({ domain, result, isLoading, error, onRetry }: DnsCardPr
                     </TabsList>
 
                     {recordTypes.map(type => (
-                        <TabsContent key={type} value={type} className="mt-4">
+                        <TabsContent
+                            key={type}
+                            value={type}
+                            className="mt-4"
+                            aria-label={`${type} DNS records`}
+                        >
                             {renderTabContent(type)}
                         </TabsContent>
                     ))}
@@ -281,13 +327,6 @@ function ValueList({ title, items, emptyLabel, onCopy, copied }: ValueListProps)
         )
     }
 
-    let copiedNode: JSX.Element | undefined
-    if (copied) {
-        copiedNode = (
-            <div className="text-[11px] text-muted-foreground">Copied to clipboard</div>
-        )
-    }
-
     return (
         <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">{title}</p>
@@ -295,15 +334,27 @@ function ValueList({ title, items, emptyLabel, onCopy, copied }: ValueListProps)
                 <table className="w-full border-collapse text-left text-xs">
                     <thead className="bg-muted/60">
                     <tr>
-                        <th className="px-3 py-2 font-medium">Value</th>
-                        <th className="px-3 py-2 text-right font-medium">Actions</th>
+                        <th
+                            scope="col"
+                            className="px-3 py-2 font-medium"
+                        >
+                            Value
+                        </th>
+                        <th
+                            scope="col"
+                            className="px-3 py-2 text-right font-medium"
+                        >
+                            Actions
+                        </th>
                     </tr>
                     </thead>
                     <tbody>
                     {items.map((value, index) => (
                         <tr key={`${value}-${index}`} className="border-t">
                             <td className="px-3 py-2 align-top">
-                                <span className="break-all font-mono text-[11px]">{value}</span>
+                                    <span className="break-all font-mono text-[11px]">
+                                        {value}
+                                    </span>
                             </td>
                             <td className="px-3 py-2 align-top text-right">
                                 <Button
@@ -312,8 +363,9 @@ function ValueList({ title, items, emptyLabel, onCopy, copied }: ValueListProps)
                                     variant="ghost"
                                     className="h-7 w-7"
                                     onClick={() => onCopy(value)}
+                                    aria-label={`Copy DNS value ${value}`}
                                 >
-                                    <Copy className="h-3 w-3" />
+                                    <Copy className="h-3 w-3" aria-hidden="true" />
                                     <span className="sr-only">Copy value</span>
                                 </Button>
                             </td>
@@ -322,7 +374,12 @@ function ValueList({ title, items, emptyLabel, onCopy, copied }: ValueListProps)
                     </tbody>
                 </table>
             </ScrollArea>
-            {copiedNode}
+            <p
+                className="text-[11px] text-muted-foreground"
+                aria-live="polite"
+            >
+                {copied ? 'Copied to clipboard' : '\u00A0'}
+            </p>
         </div>
     )
 }
@@ -347,15 +404,6 @@ function MxList({ title, items, emptyLabel, onCopy, copied }: MxListProps) {
         )
     }
 
-    let copiedNode: JSX.Element | undefined
-    if (copied) {
-        copiedNode = (
-            <div className="border-t px-3 py-1 text-[11px] text-muted-foreground">
-                Copied to clipboard
-            </div>
-        )
-    }
-
     return (
         <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground">{title}</p>
@@ -363,9 +411,24 @@ function MxList({ title, items, emptyLabel, onCopy, copied }: MxListProps) {
                 <table className="w-full border-collapse text-left text-xs">
                     <thead className="bg-muted/60">
                     <tr>
-                        <th className="px-3 py-2 font-medium">Priority</th>
-                        <th className="px-3 py-2 font-medium">Exchange</th>
-                        <th className="px-3 py-2 text-right font-medium">Actions</th>
+                        <th
+                            scope="col"
+                            className="px-3 py-2 font-medium"
+                        >
+                            Priority
+                        </th>
+                        <th
+                            scope="col"
+                            className="px-3 py-2 font-medium"
+                        >
+                            Exchange
+                        </th>
+                        <th
+                            scope="col"
+                            className="px-3 py-2 text-right font-medium"
+                        >
+                            Actions
+                        </th>
                     </tr>
                     </thead>
                     <tbody>
@@ -378,9 +441,9 @@ function MxList({ title, items, emptyLabel, onCopy, copied }: MxListProps) {
                             >
                                 <td className="px-3 py-2 align-top">{mx.priority}</td>
                                 <td className="px-3 py-2 align-top">
-                    <span className="break-all font-mono text-[11px]">
-                      {mx.exchange}
-                    </span>
+                                        <span className="break-all font-mono text-[11px]">
+                                            {mx.exchange}
+                                        </span>
                                 </td>
                                 <td className="px-3 py-2 align-top text-right">
                                     <Button
@@ -389,8 +452,9 @@ function MxList({ title, items, emptyLabel, onCopy, copied }: MxListProps) {
                                         variant="ghost"
                                         className="h-7 w-7"
                                         onClick={() => onCopy(value)}
+                                        aria-label={`Copy MX record ${value}`}
                                     >
-                                        <Copy className="h-3 w-3" />
+                                        <Copy className="h-3 w-3" aria-hidden="true" />
                                         <span className="sr-only">Copy record</span>
                                     </Button>
                                 </td>
@@ -399,7 +463,12 @@ function MxList({ title, items, emptyLabel, onCopy, copied }: MxListProps) {
                     })}
                     </tbody>
                 </table>
-                {copiedNode}
+                <div
+                    className="border-t px-3 py-1 text-[11px] text-muted-foreground"
+                    aria-live="polite"
+                >
+                    {copied ? 'Copied to clipboard' : '\u00A0'}
+                </div>
             </ScrollArea>
         </div>
     )
@@ -445,12 +514,16 @@ function SoaView({ title, soa, emptyLabel, onCopy, copied }: SoaViewProps) {
                     variant="outline"
                     className="h-7 px-2 text-[11px]"
                     onClick={() => onCopy(asBindLine)}
+                    aria-label="Copy SOA record as single line"
                 >
-                    <Copy className="mr-1 h-3 w-3" />
+                    <Copy className="mr-1 h-3 w-3" aria-hidden="true" />
                     {copied ? 'Copied' : 'Copy line'}
                 </Button>
             </div>
-            <div className="grid gap-2 text-xs md:grid-cols-2">
+            <div
+                className="grid gap-2 text-xs md:grid-cols-2"
+                aria-label="SOA record details"
+            >
                 <div className="rounded-md border px-3 py-2">
                     <div className="text-[11px] font-medium uppercase text-muted-foreground">
                         Primary

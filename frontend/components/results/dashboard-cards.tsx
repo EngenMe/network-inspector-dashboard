@@ -1,6 +1,4 @@
-// frontend/components/results/dashboard-cards.tsx
-
-import React from 'react'
+import React, { useId } from 'react'
 import {
     Card,
     CardHeader,
@@ -33,19 +31,24 @@ type CardProps = {
     className?: string
 }
 
-// Reusable inline error message
 function InlineError({ message }: { message: string }) {
     return (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+        <div
+            className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+            role="alert"
+        >
             {message}
         </div>
     )
 }
 
-// Reusable empty state
 function EmptyState({ message }: { message: string }) {
     return (
-        <div className="text-xs text-muted-foreground">
+        <div
+            className="text-xs text-muted-foreground"
+            role="status"
+            aria-live="polite"
+        >
             {message}
         </div>
     )
@@ -61,12 +64,15 @@ function ResultCard({
                         emptyMessage = 'No data yet – module not wired.',
                     }: ResultCardProps) {
     const showSkeleton = status === 'loading'
+    const titleId = useId()
+    const descriptionId = useId()
+    const statusId = useId()
 
     let content: React.ReactNode
 
     if (showSkeleton) {
         content = (
-            <div className="space-y-2">
+            <div className="space-y-2" aria-hidden="true">
                 <Skeleton className="h-3 w-3/4" />
                 <Skeleton className="h-3 w-2/3" />
                 <Skeleton className="h-3 w-1/2" />
@@ -80,22 +86,37 @@ function ResultCard({
         content = <EmptyState message={emptyMessage} />
     }
 
+    const humanStatus =
+        status === 'loading' ? 'Loading' : status === 'ready' ? 'Ready' : 'Idle'
+
     return (
-        <Card className={cn('flex h-full flex-col', className)}>
+        <Card
+            className={cn('flex h-full flex-col', className)}
+            role="group"
+            aria-labelledby={titleId}
+            aria-describedby={descriptionId}
+            aria-busy={status === 'loading'}
+        >
             <CardHeader className="space-y-1 pb-3">
                 <div className="flex items-center justify-between gap-2">
-                    <CardTitle className="text-sm font-semibold tracking-tight">
+                    <CardTitle
+                        id={titleId}
+                        className="text-sm font-semibold tracking-tight"
+                    >
                         {title}
                     </CardTitle>
-                    <span className="rounded-full border bg-muted/40 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            {status === 'loading'
-                ? 'Loading'
-                : status === 'ready'
-                    ? 'Ready'
-                    : 'Idle'}
-          </span>
+                    <span
+                        id={statusId}
+                        className="rounded-full border bg-muted/40 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                        aria-live="polite"
+                    >
+                        {humanStatus}
+                    </span>
                 </div>
-                <CardDescription className="text-xs text-muted-foreground">
+                <CardDescription
+                    id={descriptionId}
+                    className="text-xs text-muted-foreground"
+                >
                     {description}
                 </CardDescription>
             </CardHeader>
@@ -196,7 +217,7 @@ export function DockerNetworkCard({
 
     return (
         <ResultCard
-            title="Docker network map"
+            title="Docker Network Map"
             description="Docker container networks and bridges will be visualized here."
             status={status}
             className={className}

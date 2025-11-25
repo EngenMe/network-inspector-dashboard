@@ -85,7 +85,7 @@ It supports multiple record types and allows switching between the Node.js resol
 - Map resolver errors (ENOTFOUND, SERVFAIL, TIMEOUT)
 
 ### Resolution Flow
-
+```
 Frontend → GET /api/dns?domain=example.com  
 ↓  
 Zod schema validates domain + record types  
@@ -97,6 +97,7 @@ dns.service selects resolver engine:
   Queries run with timeout + error handling  
   ↓  
   Normalized JSON returned to frontend
+```
 
 ### Environment Variables
 
