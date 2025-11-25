@@ -1,3 +1,8 @@
+export type DockerNetworkInput = {
+    networkName?: string;
+    includeStopped?: boolean;
+};
+
 export type DockerNetworkNode = {
     id: string;
     name: string;
