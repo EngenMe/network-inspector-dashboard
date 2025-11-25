@@ -7,7 +7,9 @@ import {
 } from "./docker.types";
 
 export class DockerService {
-    private client = new Docker({ socketPath: "/var/run/docker.sock" });
+    constructor(
+        private readonly client = new Docker({ socketPath: "/var/run/docker.sock" })
+    ) {}
 
     async getNetworkMap(input?: DockerNetworkInput): Promise<DockerNetworkResult> {
         try {
@@ -26,9 +28,11 @@ export class DockerService {
 
                 const network = this.client.getNetwork(net.Id);
                 const details = await network.inspect();
-                const containers = details.Containers ? Object.values(details.Containers) : [];
+                const containers = details.Containers
+                    ? Object.values(details.Containers)
+                    : [];
 
-                for (const container of containers) {
+                for (const container of containers as any[]) {
                     const containerNode: DockerNetworkNode = {
                         id: container.Name,
                         name: container.Name,
