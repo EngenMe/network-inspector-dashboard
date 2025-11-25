@@ -33,6 +33,7 @@ export default function ResultsPage() {
     }
 
     const status = isLoading ? 'loading' : hasData ? 'ready' : 'idle'
+    const showDashboard = status !== 'idle'
 
     return (
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8">
@@ -61,21 +62,28 @@ export default function ResultsPage() {
                 </div>
             </header>
 
-            <section className="grid auto-rows-[1fr] gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                <DNSCard status={status} />
-                <PingCard status={status} />
-                <TracerouteCard status={status} />
-                <TLSCard status={status} />
-                <HttpCard status={status} />
-                <MTUMSSCard status={status} />
-                <DockerNetworkCard
-                    status={status}
-                    networks={dockerData.networks}
-                    containers={dockerData.containers}
-                    error={dockerData.error}
-                    className="sm:col-span-2 xl:col-span-3"
-                />
-            </section>
+            {showDashboard ? (
+                <section className="grid auto-rows-[1fr] gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <DNSCard status={status} />
+                    <PingCard status={status} />
+                    <TracerouteCard status={status} />
+                    <TLSCard status={status} />
+                    <HttpCard status={status} />
+                    <MTUMSSCard status={status} />
+                    <DockerNetworkCard
+                        status={status}
+                        networks={dockerData.networks}
+                        containers={dockerData.containers}
+                        error={dockerData.error}
+                        className="sm:col-span-2 xl:col-span-3"
+                    />
+                </section>
+            ) : (
+                <div className="rounded-md border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">
+                    No active scan yet. Run a scan from the home page to populate the
+                    dashboard.
+                </div>
+            )}
         </div>
     )
 }
