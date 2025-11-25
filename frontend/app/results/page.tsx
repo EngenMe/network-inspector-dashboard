@@ -17,6 +17,8 @@ import { fetchPing, PingApiError } from '@/lib/api/ping'
 import type { PingResult } from '@/lib/types/ping'
 import { fetchTraceroute, TracerouteApiError } from '@/lib/api/traceroute'
 import type { TracerouteResult } from '@/lib/types/traceroute'
+import { fetchTls, TlsApiError } from '@/lib/api/tls'
+import type { TlsInspectorResult } from '@/lib/types/tls'
 
 type ScanStatus = 'idle' | 'loading' | 'ready'
 
@@ -51,6 +53,9 @@ export default function ResultsPage() {
         useState<TracerouteResult | null>(null)
     const [tracerouteError, setTracerouteError] = useState<string | null>(null)
 
+    const [tlsResult, setTlsResult] = useState<TlsInspectorResult | null>(null)
+    const [tlsError, setTlsError] = useState<string | null>(null)
+
     const [dockerData, setDockerData] = useState<DockerNetworkSummary | null>(
         null,
     )
@@ -65,6 +70,8 @@ export default function ResultsPage() {
             setPingError(null)
             setTracerouteResult(null)
             setTracerouteError(null)
+            setTlsResult(null)
+            setTlsError(null)
             setDockerData(null)
             setDockerError(null)
             setLastUpdated(null)
@@ -76,6 +83,7 @@ export default function ResultsPage() {
         setDnsError(null)
         setPingError(null)
         setTracerouteError(null)
+        setTlsError(null)
         setDockerError(null)
 
         const dnsPromise = fetchDns(target)
@@ -120,6 +128,20 @@ export default function ResultsPage() {
                 }
             })
 
+        const tlsPromise = fetchTls(target)
+            .then(res => {
+                if (cancelled) return
+                setTlsResult(res)
+            })
+            .catch(err => {
+                if (cancelled) return
+                if (err instanceof TlsApiError) {
+                    setTlsError(err.message)
+                } else {
+                    setTlsError('TLS inspection failed')
+                }
+            })
+
         const dockerPromise = fetch(`${defaultBaseUrl}/api/docker/network`)
             .then(res => {
                 if (!res.ok) {
@@ -151,6 +173,7 @@ export default function ResultsPage() {
             dnsPromise,
             pingPromise,
             traceroutePromise,
+            tlsPromise,
             dockerPromise,
         ]).then(() => {
             if (cancelled) return
@@ -279,6 +302,22 @@ export default function ResultsPage() {
                             )}
                         </div>
                         <div>
+                            <span className="font-mono">TLS</span>:{' '}
+                            {tlsError ? (
+                                <span className="text-destructive">error</span>
+                            ) : tlsResult ? (
+                                (() => {
+                                    const proto = tlsResult.protocol
+                                    const cipher = tlsResult.cipherSuite
+                                    if (!proto && !cipher) return 'inspected'
+                                    if (proto && cipher) return `${proto}, ${cipher}`
+                                    return proto ?? cipher ?? 'inspected'
+                                })()
+                            ) : (
+                                'pending…'
+                            )}
+                        </div>
+                        <div>
                             <span className="font-mono">Docker</span>:{' '}
                             {dockerError ? (
                                 <span className="text-destructive">error</span>
@@ -312,7 +351,11 @@ export default function ResultsPage() {
                         traceroute={tracerouteResult}
                         error={tracerouteError}
                     />
-                    <TLSCard status={effectiveStatus} />
+                    <TLSCard
+                        status={effectiveStatus}
+                        tls={tlsResult}
+                        error={tlsError}
+                    />
                     <HttpCard status={effectiveStatus} />
                     <MTUMSSCard status={effectiveStatus} />
                     <DockerNetworkCard

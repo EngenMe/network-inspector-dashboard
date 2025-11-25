@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import type { DnsLookupResult } from '@/lib/types/dns'
 import type { PingResult } from '@/lib/types/ping'
 import type { TracerouteResult } from '@/lib/types/traceroute'
+import type { TlsInspectorResult } from '@/lib/types/tls'
 
 type Status = 'idle' | 'loading' | 'ready'
 
@@ -324,23 +325,177 @@ export function TracerouteCard({
 
 // ───────────────────────── TLS ─────────────────────────
 
-export function TLSCard({ status, className }: BaseCardProps) {
+interface TLSCardProps extends BaseCardProps {
+    tls?: TlsInspectorResult | null
+    error?: string | null
+}
+
+export function TLSCard({ status, tls, error, className }: TLSCardProps) {
+    const now = Date.now()
+    const notBefore = tls?.validFrom ? Date.parse(tls.validFrom) : NaN
+    const notAfter = tls?.validTo ? Date.parse(tls.validTo) : NaN
+
+    const isValidWindow =
+        Number.isFinite(notBefore) && Number.isFinite(notAfter) && notBefore < notAfter
+
+    const isCurrentlyValid =
+        isValidWindow && now >= notBefore && now <= notAfter
+
+    const validityLabel = (() => {
+        if (!isValidWindow) return null
+        if (isCurrentlyValid) return 'Valid'
+        if (now < notBefore) return 'Not yet valid'
+        return 'Expired'
+    })()
+
     return (
         <Card className={cn(className)}>
             <CardHeader>
                 <CardTitle>TLS</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
+            <CardContent className="space-y-3 text-sm">
                 <p className="text-xs text-muted-foreground">
                     Certificate chain, protocol version, and cipher suite details will
                     show here.
                 </p>
+
                 {status === 'loading' && (
                     <p className="text-xs text-muted-foreground">
-                        Negotiating TLS with the target…
+                        Inspecting TLS handshake and certificate…
                     </p>
                 )}
-                {status === 'ready' && (
+
+                {status === 'ready' && error && !tls && (
+                    <p className="text-xs font-medium text-destructive" role="alert">
+                        {error}
+                    </p>
+                )}
+
+                {status === 'ready' && tls && (
+                    <div className="space-y-3 text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="space-y-0.5">
+                                <p className="font-mono text-[11px]">
+                                    {tls.domain ?? tls.subject ?? 'TLS endpoint'}
+                                </p>
+                                {tls.resolvedIp && (
+                                    <p className="text-[11px] text-muted-foreground">
+                                        {tls.resolvedIp}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="text-right text-[10px] text-muted-foreground">
+                                {tls.protocol && (
+                                    <div>
+                                        Proto:{' '}
+                                        <span className="font-mono">{tls.protocol}</span>
+                                    </div>
+                                )}
+                                {tls.cipherSuite && (
+                                    <div>
+                                        Cipher:{' '}
+                                        <span className="font-mono">{tls.cipherSuite}</span>
+                                    </div>
+                                )}
+                                {tls.alpn && (
+                                    <div>
+                                        ALPN:{' '}
+                                        <span className="font-mono">{tls.alpn}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {(tls.subject || tls.issuer) && (
+                            <div className="rounded border bg-muted/40 p-2">
+                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Certificate
+                                </p>
+                                {tls.subject && (
+                                    <p className="text-[11px]">
+                                        Subject:{' '}
+                                        <span className="font-mono break-all">
+                      {tls.subject}
+                    </span>
+                                    </p>
+                                )}
+                                {tls.issuer && (
+                                    <p className="text-[11px]">
+                                        Issuer:{' '}
+                                        <span className="font-mono break-all">
+                      {tls.issuer}
+                    </span>
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {(tls.validFrom || tls.validTo) && (
+                            <div className="flex items-center justify-between gap-2 rounded border bg-muted/40 px-2 py-1.5">
+                                <div className="space-y-0.5">
+                                    {tls.validFrom && (
+                                        <p className="text-[11px] text-muted-foreground">
+                                            Not before:{' '}
+                                            <time dateTime={tls.validFrom} className="font-mono">
+                                                {new Date(tls.validFrom).toLocaleDateString()}
+                                            </time>
+                                        </p>
+                                    )}
+                                    {tls.validTo && (
+                                        <p className="text-[11px] text-muted-foreground">
+                                            Not after:{' '}
+                                            <time dateTime={tls.validTo} className="font-mono">
+                                                {new Date(tls.validTo).toLocaleDateString()}
+                                            </time>
+                                        </p>
+                                    )}
+                                </div>
+                                {validityLabel && (
+                                    <span
+                                        className={
+                                            isCurrentlyValid
+                                                ? 'rounded bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold uppercase text-emerald-500'
+                                                : 'rounded bg-amber-500/10 px-2 py-1 text-[10px] font-semibold uppercase text-amber-500'
+                                        }
+                                    >
+                    {validityLabel}
+                  </span>
+                                )}
+                            </div>
+                        )}
+
+                        {tls.san && tls.san.length > 0 && (
+                            <div className="space-y-1">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Subject Alternative Names
+                                </p>
+                                <div className="max-h-20 overflow-auto rounded border px-2 py-1.5">
+                                    <ul className="space-y-0.5">
+                                        {tls.san.slice(0, 10).map((name, i) => (
+                                            <li
+                                                key={`${name}-${i}`}
+                                                className="font-mono text-[11px]"
+                                            >
+                                                {name}
+                                            </li>
+                                        ))}
+                                        {tls.san.length > 10 && (
+                                            <li className="text-[10px] text-muted-foreground">
+                                                + {tls.san.length - 10} more…
+                                            </li>
+                                        )}
+                                    </ul>
+                                </div>
+                            </div>
+                        )}
+
+                        <p className="text-[11px] font-mono text-emerald-500 dark:text-emerald-400">
+                            LIVE · TLS handshake and certificate from backend inspector
+                        </p>
+                    </div>
+                )}
+
+                {status === 'ready' && !tls && !error && (
                     <p className="text-xs text-muted-foreground">
                         TLS details will appear here after the TLS inspector is connected.
                     </p>
