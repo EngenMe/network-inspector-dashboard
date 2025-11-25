@@ -46,8 +46,8 @@
 :root {
   --radius: 0.625rem;
 
-  --background: oklch(0.985 0.01 250);          /* soft cool off-white */
-  --foreground: oklch(0.18 0.03 250);           /* dark slate */
+  --background: oklch(0.985 0.01 250);
+  --foreground: oklch(0.18 0.03 250);
 
   --card: oklch(0.99 0.005 250);
   --card-foreground: var(--foreground);
@@ -55,8 +55,7 @@
   --popover: var(--card);
   --popover-foreground: var(--foreground);
 
-  /* cyan/teal primary = “network online” */
-  --primary: oklch(0.7 0.12 190);               /* similar to cyan-400 */
+  --primary: oklch(0.7 0.12 190);
   --primary-foreground: oklch(0.17 0.03 250);
 
   --secondary: oklch(0.95 0.01 250);
@@ -68,7 +67,9 @@
   --accent: oklch(0.96 0.015 210);
   --accent-foreground: var(--foreground);
 
-  --destructive: oklch(0.63 0.18 27);           /* warm red */
+  --destructive: oklch(0.63 0.18 27);
+  --destructive-foreground: oklch(0.99 0.005 250);
+
   --border: oklch(0.9 0.01 250);
   --input: var(--border);
   --ring: oklch(0.7 0.08 220);
@@ -90,7 +91,7 @@
 }
 
 .dark {
-  --background: oklch(0.16 0.03 250);           /* dark slate */
+  --background: oklch(0.16 0.03 250);
   --foreground: oklch(0.97 0.01 250);
 
   --card: oklch(0.20 0.03 250);
@@ -99,7 +100,7 @@
   --popover: var(--card);
   --popover-foreground: var(--foreground);
 
-  --primary: oklch(0.78 0.14 190);              /* brighter cyan for dark bg */
+  --primary: oklch(0.78 0.14 190);
   --primary-foreground: oklch(0.16 0.03 250);
 
   --secondary: oklch(0.24 0.02 250);
@@ -112,6 +113,8 @@
   --accent-foreground: var(--foreground);
 
   --destructive: oklch(0.7 0.16 27);
+  --destructive-foreground: oklch(0.16 0.03 250);
+
   --border: oklch(0.32 0.02 250);
   --input: oklch(0.32 0.02 250);
   --ring: oklch(0.7 0.08 220);
@@ -134,9 +137,14 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
   }
 }
