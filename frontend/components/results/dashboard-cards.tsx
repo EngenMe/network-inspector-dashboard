@@ -1,3 +1,5 @@
+// frontend/components/results/dashboard-cards.tsx
+
 import React from 'react'
 import {
     Card,
@@ -22,12 +24,31 @@ type ResultCardProps = {
     status?: Status
     className?: string
     children?: React.ReactNode
+    errorMessage?: string
+    emptyMessage?: string
 }
 
-function statusLabel(status: Status) {
-    if (status === 'loading') return 'Loading'
-    if (status === 'ready') return 'Ready'
-    return 'Idle'
+type CardProps = {
+    status?: Status
+    className?: string
+}
+
+// Reusable inline error message
+function InlineError({ message }: { message: string }) {
+    return (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {message}
+        </div>
+    )
+}
+
+// Reusable empty state
+function EmptyState({ message }: { message: string }) {
+    return (
+        <div className="text-xs text-muted-foreground">
+            {message}
+        </div>
+    )
 }
 
 function ResultCard({
@@ -36,8 +57,28 @@ function ResultCard({
                         status = 'idle',
                         className,
                         children,
+                        errorMessage,
+                        emptyMessage = 'No data yet – module not wired.',
                     }: ResultCardProps) {
     const showSkeleton = status === 'loading'
+
+    let content: React.ReactNode
+
+    if (showSkeleton) {
+        content = (
+            <div className="space-y-2">
+                <Skeleton className="h-3 w-3/4" />
+                <Skeleton className="h-3 w-2/3" />
+                <Skeleton className="h-3 w-1/2" />
+            </div>
+        )
+    } else if (errorMessage) {
+        content = <InlineError message={errorMessage} />
+    } else if (children) {
+        content = children
+    } else {
+        content = <EmptyState message={emptyMessage} />
+    }
 
     return (
         <Card className={cn('flex h-full flex-col', className)}>
@@ -47,7 +88,11 @@ function ResultCard({
                         {title}
                     </CardTitle>
                     <span className="rounded-full border bg-muted/40 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            {statusLabel(status)}
+            {status === 'loading'
+                ? 'Loading'
+                : status === 'ready'
+                    ? 'Ready'
+                    : 'Idle'}
           </span>
                 </div>
                 <CardDescription className="text-xs text-muted-foreground">
@@ -55,27 +100,10 @@ function ResultCard({
                 </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-1 flex-col pt-0">
-                {showSkeleton ? (
-                    <div className="space-y-2">
-                        <Skeleton className="h-3 w-3/4" />
-                        <Skeleton className="h-3 w-2/3" />
-                        <Skeleton className="h-3 w-1/2" />
-                    </div>
-                ) : children ? (
-                    children
-                ) : (
-                    <div className="text-xs text-muted-foreground">
-                        No data yet – module not wired.
-                    </div>
-                )}
+                {content}
             </CardContent>
         </Card>
     )
-}
-
-type CardProps = {
-    status?: Status
-    className?: string
 }
 
 export function DNSCard({ status = 'idle', className }: CardProps) {
@@ -85,6 +113,7 @@ export function DNSCard({ status = 'idle', className }: CardProps) {
             description="DNS summary will appear here once results are wired from the DNS module."
             status={status}
             className={className}
+            emptyMessage="DNS module is not wired yet. Run a scan once DNS integration is connected."
         />
     )
 }
@@ -96,6 +125,7 @@ export function PingCard({ status = 'idle', className }: CardProps) {
             description="Ping latency and packet loss timelines will be displayed here."
             status={status}
             className={className}
+            emptyMessage="No ping data available yet. Trigger a scan to populate this card."
         />
     )
 }
@@ -107,6 +137,7 @@ export function TracerouteCard({ status = 'idle', className }: CardProps) {
             description="Hop-by-hop route visualizations will be rendered in this card."
             status={status}
             className={className}
+            emptyMessage="No traceroute data yet. It will appear once the traceroute module is wired."
         />
     )
 }
@@ -118,6 +149,7 @@ export function TLSCard({ status = 'idle', className }: CardProps) {
             description="Certificate chain, protocol version, and cipher suite details will show here."
             status={status}
             className={className}
+            emptyMessage="TLS details will appear here after the TLS inspector is connected."
         />
     )
 }
@@ -129,6 +161,7 @@ export function HttpCard({ status = 'idle', className }: CardProps) {
             description="HTTP status, response headers, and protocol information will be displayed here."
             status={status}
             className={className}
+            emptyMessage="HTTP inspector is not wired yet. Results will show here after integration."
         />
     )
 }
@@ -140,6 +173,7 @@ export function MTUMSSCard({ status = 'idle', className }: CardProps) {
             description="MTU and MSS behavior across the path will be summarized here."
             status={status}
             className={className}
+            emptyMessage="MTU / MSS tests are not connected yet. They will populate this card later."
         />
     )
 }
@@ -157,7 +191,8 @@ export function DockerNetworkCard({
     containers?: DockerContainer[]
     error?: string | null
 }) {
-    const shouldRenderMap = status === 'ready'
+    const hasError = Boolean(error)
+    const shouldRenderMap = status === 'ready' && !hasError
 
     return (
         <ResultCard
@@ -165,19 +200,17 @@ export function DockerNetworkCard({
             description="Docker container networks and bridges will be visualized here."
             status={status}
             className={className}
+            errorMessage={hasError ? `Docker integration error: ${error}` : undefined}
+            emptyMessage="Waiting for scan results or Docker integration. This card will show container networks once wired."
         >
             {shouldRenderMap ? (
                 <DockerNetworkMap
                     networks={networks ?? []}
                     containers={containers ?? []}
                     loading={status === 'loading'}
-                    error={error ?? undefined}
+                    error={null}
                 />
-            ) : (
-                <div className="text-xs text-muted-foreground">
-                    Waiting for scan results or Docker integration.
-                </div>
-            )}
+            ) : undefined}
         </ResultCard>
     )
 }
