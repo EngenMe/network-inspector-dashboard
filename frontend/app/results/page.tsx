@@ -17,7 +17,22 @@ export default function ResultsPage() {
     const target = rawTarget?.trim() ?? ''
 
     const isLoading = false
-    const hasData = false
+    const hasData = true
+
+    const dockerData = {
+        networks: [
+            { name: "bridge0", driver: "bridge", subnet: "172.18.0.0/16" },
+        ],
+        containers: [
+            {
+                id: "1234567890abc",
+                name: "backend",
+                status: "running",
+                networks: ["bridge0"],
+            },
+        ],
+        error: null,
+    }
 
     const status = isLoading ? 'loading' : hasData ? 'ready' : 'idle'
 
@@ -51,6 +66,9 @@ export default function ResultsPage() {
                 <MTUMSSCard status={status} />
                 <DockerNetworkCard
                     status={status}
+                    networks={dockerData.networks}
+                    containers={dockerData.containers}
+                    error={dockerData.error}
                     className="md:col-span-2 xl:col-span-3"
                 />
             </section>

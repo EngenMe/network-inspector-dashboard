@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import DockerNetworkMap from "@/components/docker/docker-network-map"
 
 type Status = 'idle' | 'loading' | 'ready'
 
@@ -40,8 +41,8 @@ function ResultCard({
                 <div className="flex items-center justify-between gap-2">
                     <CardTitle className="text-sm font-semibold">{title}</CardTitle>
                     <span className="rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-            {statusLabel(status)}
-          </span>
+                        {statusLabel(status)}
+                    </span>
                 </div>
                 <CardDescription>{description}</CardDescription>
             </CardHeader>
@@ -135,13 +136,34 @@ export function MTUMSSCard({ status = 'idle', className }: CardProps) {
     )
 }
 
-export function DockerNetworkCard({ status = 'idle', className }: CardProps) {
+export function DockerNetworkCard({
+                                      status = 'idle',
+                                      className,
+                                      networks,
+                                      containers,
+                                      error,
+                                  }: {
+    status?: Status
+    className?: string
+    networks?: any[]
+    containers?: any[]
+    error?: string
+}) {
     return (
         <ResultCard
             title="Docker Network Map"
             description="Docker container networks and bridges will be visualized here."
             status={status}
             className={className}
-        />
+        >
+            {status === 'ready' && (
+                <DockerNetworkMap
+                    networks={networks ?? []}
+                    containers={containers ?? []}
+                    loading={status === 'loading'}
+                    error={error}
+                />
+            )}
+        </ResultCard>
     )
 }
