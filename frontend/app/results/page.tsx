@@ -15,6 +15,8 @@ import { fetchDns, ApiError } from '@/lib/api/dns'
 import type { DnsLookupResult } from '@/lib/types/dns'
 import { fetchPing, PingApiError } from '@/lib/api/ping'
 import type { PingResult } from '@/lib/types/ping'
+import { fetchTraceroute, TracerouteApiError } from '@/lib/api/traceroute'
+import type { TracerouteResult } from '@/lib/types/traceroute'
 
 type ScanStatus = 'idle' | 'loading' | 'ready'
 
@@ -45,6 +47,10 @@ export default function ResultsPage() {
     const [pingResult, setPingResult] = useState<PingResult | null>(null)
     const [pingError, setPingError] = useState<string | null>(null)
 
+    const [tracerouteResult, setTracerouteResult] =
+        useState<TracerouteResult | null>(null)
+    const [tracerouteError, setTracerouteError] = useState<string | null>(null)
+
     const [dockerData, setDockerData] = useState<DockerNetworkSummary | null>(
         null,
     )
@@ -57,6 +63,8 @@ export default function ResultsPage() {
             setDnsError(null)
             setPingResult(null)
             setPingError(null)
+            setTracerouteResult(null)
+            setTracerouteError(null)
             setDockerData(null)
             setDockerError(null)
             setLastUpdated(null)
@@ -67,6 +75,7 @@ export default function ResultsPage() {
         setScanStatus('loading')
         setDnsError(null)
         setPingError(null)
+        setTracerouteError(null)
         setDockerError(null)
 
         const dnsPromise = fetchDns(target)
@@ -97,6 +106,20 @@ export default function ResultsPage() {
                 }
             })
 
+        const traceroutePromise = fetchTraceroute(target)
+            .then(res => {
+                if (cancelled) return
+                setTracerouteResult(res)
+            })
+            .catch(err => {
+                if (cancelled) return
+                if (err instanceof TracerouteApiError) {
+                    setTracerouteError(err.message)
+                } else {
+                    setTracerouteError('Traceroute failed')
+                }
+            })
+
         const dockerPromise = fetch(`${defaultBaseUrl}/api/docker/network`)
             .then(res => {
                 if (!res.ok) {
@@ -124,7 +147,12 @@ export default function ResultsPage() {
                 }
             })
 
-        Promise.allSettled([dnsPromise, pingPromise, dockerPromise]).then(() => {
+        Promise.allSettled([
+            dnsPromise,
+            pingPromise,
+            traceroutePromise,
+            dockerPromise,
+        ]).then(() => {
             if (cancelled) return
             setScanStatus('ready')
             setLastUpdated(new Date().toISOString())
@@ -133,10 +161,8 @@ export default function ResultsPage() {
         return () => {
             cancelled = true
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [target])
 
-    // No target => keep old mock behaviour for tests
     const effectiveStatus: ScanStatus = target ? scanStatus : 'ready'
     const showDashboard = effectiveStatus !== 'idle'
 
@@ -228,25 +254,26 @@ export default function ResultsPage() {
                                 <span className="text-destructive">error</span>
                             ) : pingResult ? (
                                 (() => {
-                                    const stats = pingResult.stats ?? (pingResult as any)
-                                    const avg =
-                                        stats?.avgRttMs ??
-                                        stats?.avg ??
-                                        undefined
+                                    const stats = pingResult as any
+                                    const avg = typeof stats.avg === 'number' ? stats.avg : null
                                     const loss =
-                                        stats?.packetLoss ??
-                                        stats?.loss ??
-                                        undefined
+                                        typeof stats.packetLoss === 'number' ? stats.packetLoss : null
                                     if (avg == null && loss == null) return 'received'
                                     const parts: string[] = []
-                                    if (typeof avg === 'number') {
-                                        parts.push(`${avg.toFixed(1)} ms avg`)
-                                    }
-                                    if (typeof loss === 'number') {
-                                        parts.push(`${loss}% loss`)
-                                    }
+                                    if (avg != null) parts.push(`${avg.toFixed(1)} ms avg`)
+                                    if (loss != null) parts.push(`${loss}% loss`)
                                     return parts.join(', ')
                                 })()
+                            ) : (
+                                'pending…'
+                            )}
+                        </div>
+                        <div>
+                            <span className="font-mono">Traceroute</span>:{' '}
+                            {tracerouteError ? (
+                                <span className="text-destructive">error</span>
+                            ) : tracerouteResult ? (
+                                `${tracerouteResult.hops?.length ?? 0} hop(s)`
                             ) : (
                                 'pending…'
                             )}
@@ -280,7 +307,11 @@ export default function ResultsPage() {
                         ping={pingResult}
                         error={pingError}
                     />
-                    <TracerouteCard status={effectiveStatus} />
+                    <TracerouteCard
+                        status={effectiveStatus}
+                        traceroute={tracerouteResult}
+                        error={tracerouteError}
+                    />
                     <TLSCard status={effectiveStatus} />
                     <HttpCard status={effectiveStatus} />
                     <MTUMSSCard status={effectiveStatus} />

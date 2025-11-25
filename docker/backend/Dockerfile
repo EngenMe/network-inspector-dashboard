@@ -1,8 +1,10 @@
 FROM oven/bun:1
 
-# install ping (iputils-ping) inside the container
+# Install network tools we depend on
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends iputils-ping \
+  && apt-get install -y --no-install-recommends \
+       iputils-ping \
+       traceroute \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/backend

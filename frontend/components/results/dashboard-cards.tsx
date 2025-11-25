@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import type { DnsLookupResult } from '@/lib/types/dns'
 import type { PingResult } from '@/lib/types/ping'
+import type { TracerouteResult } from '@/lib/types/traceroute'
 
 type Status = 'idle' | 'loading' | 'ready'
 
@@ -213,22 +214,104 @@ export function PingCard({ status, ping, error, className }: PingCardProps) {
 
 // ─────────────────────── Traceroute ───────────────────────
 
-export function TracerouteCard({ status, className }: BaseCardProps) {
+interface TracerouteCardProps extends BaseCardProps {
+    traceroute?: TracerouteResult | null
+    error?: string | null
+}
+
+export function TracerouteCard({
+                                   status,
+                                   traceroute,
+                                   error,
+                                   className,
+                               }: TracerouteCardProps) {
+    const hops = traceroute?.hops ?? []
+
     return (
         <Card className={cn(className)}>
             <CardHeader>
                 <CardTitle>Traceroute</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
+            <CardContent className="space-y-3 text-sm">
                 <p className="text-xs text-muted-foreground">
                     Hop-by-hop route visualizations will be rendered in this card.
                 </p>
+
                 {status === 'loading' && (
                     <p className="text-xs text-muted-foreground">
-                        Tracing the route to the target…
+                        Probing hops towards the destination…
                     </p>
                 )}
-                {status === 'ready' && (
+
+                {status === 'ready' && error && !traceroute && (
+                    <p className="text-xs font-medium text-destructive" role="alert">
+                        {error}
+                    </p>
+                )}
+
+                {status === 'ready' && traceroute && hops.length > 0 && (
+                    <div className="space-y-2 text-xs">
+                        <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Path overview
+              </span>
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                {hops.length} hop{hops.length !== 1 ? 's' : ''}
+              </span>
+                        </div>
+                        <div className="max-h-40 overflow-auto rounded border">
+                            <ol className="divide-y">
+                                {hops.slice(0, 12).map(hop => {
+                                    const rtts = hop.rttMs ?? []
+                                    const min =
+                                        rtts.length > 0
+                                            ? Math.min(...rtts)
+                                            : null
+                                    const max =
+                                        rtts.length > 0
+                                            ? Math.max(...rtts)
+                                            : null
+
+                                    return (
+                                        <li
+                                            key={hop.hop}
+                                            className="flex items-center gap-2 px-2 py-1.5"
+                                        >
+                      <span className="w-7 shrink-0 text-[11px] font-mono text-muted-foreground">
+                        {hop.hop}
+                      </span>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-1">
+                          <span className="truncate font-mono">
+                            {hop.host ?? hop.ip ?? '*'}
+                          </span>
+                                                    {hop.ip && hop.host && (
+                                                        <span className="text-[10px] text-muted-foreground">
+                              ({hop.ip})
+                            </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-[10px] text-muted-foreground">
+                                                    {min != null && max != null
+                                                        ? `${min.toFixed(1)}–${max.toFixed(1)} ms`
+                                                        : 'no RTT data'}
+                                                    {typeof hop.loss === 'number'
+                                                        ? ` · ${hop.loss}% loss`
+                                                        : ''}
+                                                </div>
+                                            </div>
+                                        </li>
+                                    )
+                                })}
+                            </ol>
+                        </div>
+                        <p className="text-[11px] font-mono text-emerald-500 dark:text-emerald-400">
+                            LIVE · hop-by-hop path from backend traceroute
+                        </p>
+                    </div>
+                )}
+
+                {status === 'ready' && (!traceroute || hops.length === 0) && !error && (
                     <p className="text-xs text-muted-foreground">
                         No traceroute data yet. It will appear once the traceroute module is
                         wired.

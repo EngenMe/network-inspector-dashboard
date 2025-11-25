@@ -3,7 +3,7 @@ import { tracerouteQuerySchema } from '../modules/traceroute/traceroute.schema';
 import { TracerouteService } from '../modules/traceroute/traceroute.service';
 
 export default async function tracerouteRoute(app: FastifyInstance) {
-    app.get('/api/traceroute', async (request, reply) => {
+    app.get('/traceroute', async (request, reply) => {
         const parse = tracerouteQuerySchema.safeParse(request.query);
 
         if (!parse.success) {
