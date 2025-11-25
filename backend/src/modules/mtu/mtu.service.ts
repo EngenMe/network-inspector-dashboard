@@ -13,12 +13,14 @@ export class MtuService {
 
         for (let size = start; size <= end; size += step) {
             const cmd = `ping -M do -s ${size} -c 1 ${input.target}`;
-            const { stdout = "", stderr = "" } = await execAsync(cmd).catch((e) => e);
+            const { stdout = "", stderr = "" } = await execAsync(cmd).catch(
+                (e: any) => e
+            );
 
             const output = stdout + stderr;
             rawOutput.push(output);
 
-            if (output.includes("0% packet loss")) {
+            if (/\b0% packet loss\b/.test(output)) {
                 successful.push(size);
             } else {
                 failed.push(size);
