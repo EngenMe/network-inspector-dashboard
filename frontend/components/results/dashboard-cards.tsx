@@ -4,6 +4,7 @@ import type { DnsLookupResult } from '@/lib/types/dns'
 import type { PingResult } from '@/lib/types/ping'
 import type { TracerouteResult } from '@/lib/types/traceroute'
 import type { TlsInspectorResult } from '@/lib/types/tls'
+import type { HttpInspectorResult } from '@/lib/types/http'
 
 type Status = 'idle' | 'loading' | 'ready'
 
@@ -507,23 +508,139 @@ export function TLSCard({ status, tls, error, className }: TLSCardProps) {
 
 // ───────────────────────── HTTP ─────────────────────────
 
-export function HttpCard({ status, className }: BaseCardProps) {
+interface HttpCardProps extends BaseCardProps {
+    http?: HttpInspectorResult | null
+    error?: string | null
+}
+
+export function HttpCard({ status, http, error, className }: HttpCardProps) {
+    const rawHeaders = (http as any)?.headers ?? []
+    const headers =
+        Array.isArray(rawHeaders)
+            ? rawHeaders
+            : rawHeaders && typeof rawHeaders === 'object'
+                ? Object.entries(rawHeaders).map(([name, value]) => ({
+                    name,
+                    value: String(value),
+                }))
+                : []
+
+    const redirects = Array.isArray(http?.redirectChain)
+        ? http!.redirectChain!
+        : []
+
+    const hasRedirects = redirects.length > 0
+
     return (
         <Card className={cn(className)}>
             <CardHeader>
                 <CardTitle>HTTP</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm">
+            <CardContent className="space-y-3 text-sm">
                 <p className="text-xs text-muted-foreground">
                     HTTP status, response headers, and protocol information will be
                     displayed here.
                 </p>
+
                 {status === 'loading' && (
                     <p className="text-xs text-muted-foreground">
-                        Performing HTTP request to the target…
+                        Performing HTTP request and capturing response…
                     </p>
                 )}
-                {status === 'ready' && (
+
+                {status === 'ready' && error && !http && (
+                    <p className="text-xs font-medium text-destructive" role="alert">
+                        {error}
+                    </p>
+                )}
+
+                {status === 'ready' && http && (
+                    <div className="space-y-3 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="min-w-0 space-y-0.5">
+                                <p className="truncate font-mono">
+                                    {http.method} {http.url}
+                                </p>
+                                {http.ip && (
+                                    <p className="text-[11px] text-muted-foreground">
+                                        {http.ip}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="text-right text-[11px]">
+                                <p className="font-mono">
+                                    {http.statusCode} {http.statusText ?? ''}
+                                </p>
+                                {http.protocol && (
+                                    <p className="text-muted-foreground">{http.protocol}</p>
+                                )}
+                                {http.contentType && (
+                                    <p className="text-muted-foreground">
+                                        {http.contentType}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        {hasRedirects && (
+                            <div className="rounded border bg-muted/40 p-2">
+                                <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Redirect chain
+                                </p>
+                                <ol className="space-y-0.5">
+                                    {redirects.map((r, i) => (
+                                        <li
+                                            key={`${r.statusCode}-${r.url}-${i}`}
+                                            className="flex items-center justify-between gap-2"
+                                        >
+                      <span className="font-mono text-[11px]">
+                        {r.statusCode}
+                      </span>
+                                            <span className="truncate font-mono text-[11px]">
+                        {r.url}
+                      </span>
+                                        </li>
+                                    ))}
+                                </ol>
+                            </div>
+                        )}
+
+                        <div className="space-y-1">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                Headers
+                            </p>
+                            {headers.length === 0 ? (
+                                <p className="text-[11px] text-muted-foreground">
+                                    No headers captured.
+                                </p>
+                            ) : (
+                                <div className="max-h-40 overflow-auto rounded border">
+                                    <ul className="divide-y">
+                                        {headers.map((h, i) => (
+                                            <li
+                                                key={`${h.name}-${i}`}
+                                                className="flex items-center gap-2 px-2 py-1.5"
+                                            >
+                        <span className="w-28 shrink-0 truncate font-mono text-[11px] text-muted-foreground">
+                          {h.name}
+                        </span>
+                                                <span className="min-w-0 flex-1 truncate font-mono text-[11px]">
+                          {h.value}
+                        </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+
+                        <p className="text-[11px] font-mono text-emerald-500 dark:text-emerald-400">
+                            LIVE · HTTP response from backend inspector
+                        </p>
+                    </div>
+                )}
+
+                {status === 'ready' && !http && !error && (
                     <p className="text-xs text-muted-foreground">
                         HTTP inspector is not wired yet. Results will show here after
                         integration.

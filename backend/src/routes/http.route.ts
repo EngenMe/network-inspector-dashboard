@@ -2,7 +2,7 @@ import type {FastifyInstance} from "fastify"
 import { httpQuerySchema, httpService, HttpServiceError } from "../modules/http"
 
 export const registerHttpRoute = async (fastify: FastifyInstance) => {
-    fastify.get("/api/http-info", async (request, reply) => {
+    fastify.get("/http-info", async (request, reply) => {
         const parsed = httpQuerySchema.safeParse(request.query)
 
         if (!parsed.success) {

@@ -19,6 +19,8 @@ import { fetchTraceroute, TracerouteApiError } from '@/lib/api/traceroute'
 import type { TracerouteResult } from '@/lib/types/traceroute'
 import { fetchTls, TlsApiError } from '@/lib/api/tls'
 import type { TlsInspectorResult } from '@/lib/types/tls'
+import { fetchHttpInfo, HttpApiError } from '@/lib/api/http'
+import type { HttpInspectorResult } from '@/lib/types/http'
 
 type ScanStatus = 'idle' | 'loading' | 'ready'
 
@@ -56,6 +58,9 @@ export default function ResultsPage() {
     const [tlsResult, setTlsResult] = useState<TlsInspectorResult | null>(null)
     const [tlsError, setTlsError] = useState<string | null>(null)
 
+    const [httpResult, setHttpResult] = useState<HttpInspectorResult | null>(null)
+    const [httpError, setHttpError] = useState<string | null>(null)
+
     const [dockerData, setDockerData] = useState<DockerNetworkSummary | null>(
         null,
     )
@@ -72,6 +77,8 @@ export default function ResultsPage() {
             setTracerouteError(null)
             setTlsResult(null)
             setTlsError(null)
+            setHttpResult(null)
+            setHttpError(null)
             setDockerData(null)
             setDockerError(null)
             setLastUpdated(null)
@@ -84,6 +91,7 @@ export default function ResultsPage() {
         setPingError(null)
         setTracerouteError(null)
         setTlsError(null)
+        setHttpError(null)
         setDockerError(null)
 
         const dnsPromise = fetchDns(target)
@@ -142,6 +150,20 @@ export default function ResultsPage() {
                 }
             })
 
+        const httpPromise = fetchHttpInfo(target.startsWith('http') ? target : `https://${target}`)
+            .then(res => {
+                if (cancelled) return
+                setHttpResult(res)
+            })
+            .catch(err => {
+                if (cancelled) return
+                if (err instanceof HttpApiError) {
+                    setHttpError(err.message)
+                } else {
+                    setHttpError('HTTP inspection failed')
+                }
+            })
+
         const dockerPromise = fetch(`${defaultBaseUrl}/api/docker/network`)
             .then(res => {
                 if (!res.ok) {
@@ -174,6 +196,7 @@ export default function ResultsPage() {
             pingPromise,
             traceroutePromise,
             tlsPromise,
+            httpPromise,
             dockerPromise,
         ]).then(() => {
             if (cancelled) return
@@ -318,6 +341,18 @@ export default function ResultsPage() {
                             )}
                         </div>
                         <div>
+                            <span className="font-mono">HTTP</span>:{' '}
+                            {httpError ? (
+                                <span className="text-destructive">error</span>
+                            ) : httpResult ? (
+                                `${httpResult.statusCode} ${
+                                    httpResult.statusText ?? ''
+                                }`.trim()
+                            ) : (
+                                'pending…'
+                            )}
+                        </div>
+                        <div>
                             <span className="font-mono">Docker</span>:{' '}
                             {dockerError ? (
                                 <span className="text-destructive">error</span>
@@ -356,7 +391,11 @@ export default function ResultsPage() {
                         tls={tlsResult}
                         error={tlsError}
                     />
-                    <HttpCard status={effectiveStatus} />
+                    <HttpCard
+                        status={effectiveStatus}
+                        http={httpResult}
+                        error={httpError}
+                    />
                     <MTUMSSCard status={effectiveStatus} />
                     <DockerNetworkCard
                         status={effectiveStatus}
