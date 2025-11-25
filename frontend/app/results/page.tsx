@@ -20,15 +20,13 @@ export default function ResultsPage() {
     const hasData = true
 
     const dockerData = {
-        networks: [
-            { name: "bridge0", driver: "bridge", subnet: "172.18.0.0/16" },
-        ],
+        networks: [{ name: 'bridge0', driver: 'bridge', subnet: '172.18.0.0/16' }],
         containers: [
             {
-                id: "1234567890abc",
-                name: "backend",
-                status: "running",
-                networks: ["bridge0"],
+                id: '1234567890abc',
+                name: 'backend',
+                status: 'running',
+                networks: ['bridge0'],
             },
         ],
         error: null,
@@ -37,27 +35,33 @@ export default function ResultsPage() {
     const status = isLoading ? 'loading' : hasData ? 'ready' : 'idle'
 
     return (
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 py-6">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8">
             <header className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
                 <div className="space-y-1">
-                    <h1 className="text-2xl font-semibold tracking-tight">Scan Results</h1>
+                    <h1 className="text-2xl font-semibold tracking-tight">
+                        Scan results
+                    </h1>
                     <p className="text-sm text-muted-foreground">
                         {target ? (
                             <>
-                                Global results dashboard placeholder for{' '}
-                                <span className="font-mono text-xs">{target}</span>.
+                                Aggregated network diagnostics for{' '}
+                                <span className="font-mono text-xs">{target}</span>. Modules
+                                will populate as they are wired to the backend.
                             </>
                         ) : (
-                            'Global results dashboard placeholder. Start a scan from the DNS page or provide a target.'
+                            'Aggregated network diagnostics. Start a scan from the home page to see results for a specific target.'
                         )}
                     </p>
                 </div>
                 <div className="text-xs text-muted-foreground">
-                    Last updated: <span className="font-mono">—</span>
+                    Last updated:{' '}
+                    <span className="font-mono">
+            {hasData ? '— mock data' : '—'}
+          </span>
                 </div>
             </header>
 
-            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <section className="grid auto-rows-[1fr] gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <DNSCard status={status} />
                 <PingCard status={status} />
                 <TracerouteCard status={status} />
@@ -69,7 +73,7 @@ export default function ResultsPage() {
                     networks={dockerData.networks}
                     containers={dockerData.containers}
                     error={dockerData.error}
-                    className="md:col-span-2 xl:col-span-3"
+                    className="sm:col-span-2 xl:col-span-3"
                 />
             </section>
         </div>
